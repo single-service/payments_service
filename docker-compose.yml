@@ -1,0 +1,31 @@
+version: '3.3'
+
+volumes:
+  db_volume:
+  admin_static_volume:
+  admin_media_volume:
+
+services:
+  db:
+    image: postgres:15.4
+    volumes:
+      - db_volume:/var/lib/postgresql/data
+    env_file:
+      - .envs/.db
+    ports:
+      - "5436:5432"
+
+  admin:
+    build:
+      context: .
+      dockerfile: ./compose/admin/Dockerfile
+    depends_on:
+      - db
+    volumes:
+      - admin_static_volume:/billing_manager/static
+      - admin_media_volume:/billing_manager/media
+    ports:
+      - "81:80"
+    env_file:
+      - .envs/.admin
+    restart: on-failure

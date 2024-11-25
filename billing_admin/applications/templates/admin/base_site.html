@@ -1,0 +1,7 @@
+{% extends "unfold/base_site.html" %}
+{% load static %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link rel="icon" type="image/x-icon" href="{% static 'applications/assets/favicon.ico' %}">
+{% endblock %}
