@@ -20,7 +20,7 @@ logger = logging.getLogger("info")
 json_logging.init_fastapi(enable_json=True, custom_formatter=CustomJSONLog)
 
 app_settings = {
-    "title": "Сервис авторизации",
+    "title": "Billing Manager",
     "docs_url": "/api/v1/docs/",  # for monolith
     "openapi_url": "/api/v1/docs/docs/openapi.json",
 }

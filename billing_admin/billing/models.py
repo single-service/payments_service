@@ -27,6 +27,13 @@ class Order(AbstractBaseModel):
     refund_amount = models.DecimalField(_("Refund Amount"), max_digits=11, decimal_places=2, null=True, blank=True)
     fee = models.DecimalField(_("Fee"), max_digits=11, decimal_places=2, null=True, blank=True)
     receipt_link = models.URLField(_("Receipt Url"), null=True, blank=True)
+    user_id = models.CharField("User Id", max_length=300, default="")
+    user_email = models.CharField("User Id", max_length=300, null=True, blank=True)
+    idempotent_key = models.CharField("Idempotent Key", max_length=300, default="")
+    amount = models.DecimalField(_("Real Amount"), max_digits=11, decimal_places=2, null=True, blank=True)
+    discount_amount = models.DecimalField(_("Discount Amount"), max_digits=11, decimal_places=2, null=True, blank=True)
+    final_price = models.DecimalField(_("Final Price"), max_digits=11, decimal_places=2, null=True, blank=True)
+    payment_system_order_id = models.CharField("Order Id In Pay System", max_length=300, default="")
 
     class Meta:
         verbose_name = _("Order")
