@@ -1,0 +1,13 @@
+#!/bin/bash
+
+echo "Waiting for postgres..."
+echo $DB_HOST
+echo $DB_PORT
+while ! nc -z $DB_HOST $DB_PORT; do
+  echo "$DB_HOST:$DB_PORT not connected"
+  sleep 0.1
+done
+
+echo "PostgreSQL started for billing"
+
+exec "$@"
