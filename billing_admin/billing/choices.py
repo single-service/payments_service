@@ -1,7 +1,7 @@
 from django.db.models import IntegerChoices
 from django.utils.translation import gettext as _
 
-class CurrencyChoices(IntegerChoices):
+class StatusChoices(IntegerChoices):
     CREATED = 1, _('Created')
     REJECTED = 2, _('Rejected')
     PAID = 3, _('Paid')

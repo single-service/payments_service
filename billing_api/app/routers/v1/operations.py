@@ -8,6 +8,7 @@ from app.schemas.billing import OrdersSchema, RefundRequest, CreateOrderRequest
 from app.utils.auth import TokenAuth
 from app.services.operations_service import OperationsService
 from app.enums import OrderStatusChoices, PAYMENT_SYSTEM_SERVICES_MAP
+from app.validators.order import validate_create_order
 
 
 router = APIRouter()
@@ -72,55 +73,39 @@ async def refund_order(
     create_body: CreateOrderRequest,
     application_id=Depends(TokenAuth),
     operations_service = Depends(OperationsService),
-): 
-    # Проверка что такая операция уже создана
-    operation_exist = await operations_service.check_operation_created(
+):
+    # Валидация
+    validated_data, error = await validate_create_order(
         application_id=application_id,
-        idempotent_key=create_body.idempotent_key
+        idempotent_key=create_body.idempotent_key,
+        items_count=create_body.items_count,
+        payment_item_id=create_body.payment_item_id,
+        operations_service=operations_service,
     )
-    if operation_exist:
+    if error:
         raise HTTPException(
             status_code=400,
-            detail="Operation created yet"
+            detail=error
         )
-    # Проверка items_count 
-    if create_body.items_count <= 0:
-        raise HTTPException(
-            status_code=400,
-            detail="Items count need to be grater then 0"
-        )
-    payment_item = await operations_service.get_payment_item(create_body.payment_item_id)
-    if not payment_item:
-        raise HTTPException(
-            status_code=400,
-            detail="Wrong payment item"
-        )
-    if payment_item.price <= 0:
-        raise HTTPException(
-            status_code=400,
-            detail="You couldn't pay this item"
-        )
-    application = await operations_service.get_application(application_id)
-    payment_service_cls = PAYMENT_SYSTEM_SERVICES_MAP.get(application.payment_system)
-    if not payment_service_cls:
-        raise HTTPException(
-            status_code=400,
-            detail="This payment system is not ready"
-        )
+    application = validated_data["application"]
+    payment_item = validated_data["payment_item"]
+    payment_service_cls = validated_data["payment_service_cls"]
+    
     # Подтягиваем application получаем недостающие данные
     final_price, amount, discount_value, discount_amount = await operations_service.calculate_prices(payment_item, create_body.items_count)
     payment_system_parametres = await operations_service.get_payment_system_parametres(application_id)
     payment_service = payment_service_cls()
     payment_service.set_system_parameters(**payment_system_parametres)
     operation_id = str(uuid.uuid4())
+    # Получаем ссылку
     link = payment_service.create_link(
-        final_amount=final_price,
+        final_amount=amount,
         user_email=create_body.user_email,
         description=payment_item.description,
         payment_id=payment_item.id,
         invoice_id=operation_id
     )
-
+    # Добавляем операцию
     payload = dict(
         id=operation_id, # рассчитать
         created_dt=datetime.now(),
@@ -144,9 +129,10 @@ async def refund_order(
         payment_system_order_id=None,  # рассчитать
         payment_link=link,  # рассчитать
     )
-    # Получаем ссылку
-    
-    # Добавляем операцию
-
-    # Возвращаем payload с операцией
+    create_status = await operations_service.create_order(**payload)
+    if not create_status:
+        raise HTTPException(
+            status_code=400,
+            detail="Order create failed"
+        )
     return payload

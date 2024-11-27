@@ -4,7 +4,8 @@ from django.utils.translation import gettext as _
 from applications.models import AbstractBaseModel
 from applications.choices import PaymentSystemsChoices
 
-from .choices import CurrencyChoices
+from payments.choices import CurrencyChoices
+from .choices import StatusChoices
 
 
 class Order(AbstractBaseModel):
@@ -15,7 +16,7 @@ class Order(AbstractBaseModel):
     # Fields
     payment_system = models.IntegerField(_("Payment System"), choices=PaymentSystemsChoices.choices)
     payment_dt = models.DateTimeField(_("Payment Datetime"), null=True, blank=True)
-    status = models.IntegerField(_("Status"), choices=CurrencyChoices.choices, default=CurrencyChoices.CREATED)
+    status = models.IntegerField(_("Status"), choices=StatusChoices.choices, default=StatusChoices.CREATED)
     name = models.CharField(_("Name"), max_length=100)
     price = models.DecimalField(_("Price"), max_digits=11, decimal_places=2)
     currency = models.CharField(_("Currency"), max_length=3, choices=CurrencyChoices.choices)
@@ -33,7 +34,7 @@ class Order(AbstractBaseModel):
     amount = models.DecimalField(_("Real Amount"), max_digits=11, decimal_places=2, null=True, blank=True)
     discount_amount = models.DecimalField(_("Discount Amount"), max_digits=11, decimal_places=2, null=True, blank=True)
     final_price = models.DecimalField(_("Final Price"), max_digits=11, decimal_places=2, null=True, blank=True)
-    payment_system_order_id = models.CharField(_("Order Id In Pay System"), max_length=300, default="")
+    payment_system_order_id = models.CharField(_("Order Id In Pay System"), max_length=300, default=None, null=True, blank=True)
     payment_link = models.CharField(_("Payment Link"), max_length=300, default="")
 
     class Meta:

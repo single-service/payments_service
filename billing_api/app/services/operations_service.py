@@ -86,3 +86,57 @@ class OperationsService:
         result = await self.session.execute(query)
         params = result.scalars().all()
         return {p.name: p.parameter_value for p in params}
+
+    async def create_order(self,
+        id:str,
+        created_dt,
+        updated_dt,
+        application_id,
+        payment_item_id,
+        payment_system,
+        status,
+        name,
+        price,
+        final_price,
+        currency,
+        is_subscription,
+        items_count,
+        discount_value,
+        user_id,
+        user_email,
+        idempotent_key,
+        amount,
+        discount_amount,
+        payment_system_order_id,
+        payment_link,
+    ):
+        new_order = dict(
+            id=id,
+            created_dt=created_dt,
+            updated_dt=updated_dt,
+            application_id=application_id,
+            payment_item_id=payment_item_id,
+            payment_system=payment_system,
+            status=status,
+            name=name,
+            price=price,
+            final_price=final_price,
+            currency=currency,
+            is_subscription=is_subscription,
+            items_count=items_count,
+            discount_value=discount_value,
+            user_id=user_id,
+            user_email=user_email,
+            idempotent_key=idempotent_key,
+            amount=amount,
+            discount_amount=discount_amount,
+            payment_system_order_id=payment_system_order_id,
+            payment_link=payment_link,
+        )
+        try:
+            await self.session.execute(insert(Order).values(**new_order))
+            await self.session.commit()
+        except Exception as e:
+            print(f"Create user Exception: {e}")
+            return False
+        return True

@@ -19,7 +19,7 @@ class CustomJSONLog(json_logging.JSONLogWebFormatter):
         if hasattr(record, 'request'):
             json_log_object["request"] = record.request
 
-        json_log_object.update({"service_name": "x5bank"})
+        json_log_object.update({"service_name": "Billing Manager"})
 
         return json_log_object
 
@@ -41,7 +41,7 @@ class CustomRequestJSONLog(json_logging.JSONRequestLogFormatter):
 
         json_log_object.update(
             {
-                "service_name": "x5bank",
+                "service_name": "Billing Manager",
                 "level": record.levelname,
             },
         )

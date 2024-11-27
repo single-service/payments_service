@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-11-25 07:57-0600\n"
+"POT-Creation-Date: 2024-11-27 01:40-0600\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -48,62 +48,90 @@ msgstr "Возврат"
 msgid "Expired"
 msgstr "Просрочен"
 
-#: billing/models.py:16
+#: billing/models.py:17
 msgid "Payment System"
 msgstr "Платежная система"
 
-#: billing/models.py:17
+#: billing/models.py:18
 msgid "Payment Datetime"
 msgstr "Дата-время оплаты"
 
-#: billing/models.py:18
+#: billing/models.py:19
 msgid "Status"
 msgstr "Статус"
 
-#: billing/models.py:19
+#: billing/models.py:20
 msgid "Name"
 msgstr "Наименование"
 
-#: billing/models.py:20
+#: billing/models.py:21
 msgid "Price"
 msgstr "Цена"
 
-#: billing/models.py:21
+#: billing/models.py:22
 msgid "Currency"
 msgstr "Валюта"
 
-#: billing/models.py:23
+#: billing/models.py:24
 msgid "Items Count"
 msgstr "Количество позиций"
 
-#: billing/models.py:24
+#: billing/models.py:25
 msgid "Discount Value, %"
 msgstr "Скидка, %"
 
-#: billing/models.py:25
+#: billing/models.py:26
 msgid "Refunding Request Datetime"
 msgstr "Дата-время запроса на возврат"
 
-#: billing/models.py:26
+#: billing/models.py:27
 msgid "Refund Datetime"
 msgstr "Дата-время возврата"
 
-#: billing/models.py:27
+#: billing/models.py:28
 msgid "Refund Amount"
 msgstr "Сумма возврата"
 
-#: billing/models.py:28
+#: billing/models.py:29
 msgid "Fee"
 msgstr "Пошлина"
 
-#: billing/models.py:29
+#: billing/models.py:30
 msgid "Receipt Url"
 msgstr "Ссылка на фиск. чек"
 
-#: billing/models.py:32
+#: billing/models.py:34
+#, fuzzy
+#| msgid "Refund Amount"
+msgid "Real Amount"
+msgstr "Сумма к оплате"
+
+#: billing/models.py:35
+#, fuzzy
+#| msgid "Refund Amount"
+msgid "Discount Amount"
+msgstr "Сумма скидки"
+
+#: billing/models.py:36
+#, fuzzy
+#| msgid "Price"
+msgid "Final Price"
+msgstr "Финальная цена"
+
+#: billing/models.py:37
+msgid "Order Id In Pay System"
+msgstr "ID заказа в пл.системе"
+
+#: billing/models.py:38
+#, fuzzy
+#| msgid "Payment Datetime"
+msgid "Payment Link"
+msgstr "Платежная ссылка"
+
+#: billing/models.py:41
 msgid "Order"
 msgstr "Заказ"
 
-#: billing/models.py:33
+#: billing/models.py:42
 msgid "Orders"
 msgstr "Заказы"

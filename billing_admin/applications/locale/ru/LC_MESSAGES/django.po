@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-11-25 07:57-0600\n"
+"POT-Creation-Date: 2024-11-27 01:40-0600\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -20,11 +20,11 @@ msgstr ""
 "%10<=4 && (n%100<12 || n%100>14) ? 1 : n%10==0 || (n%10>=5 && n%10<=9) || (n"
 "%100>=11 && n%100<=14)? 2 : 3);\n"
 
-#: applications/admin.py:38
+#: applications/admin.py:43
 msgid "Create token"
 msgstr "Создать токен"
 
-#: applications/admin.py:56
+#: applications/admin.py:61
 #, python-brace-format
 msgid "Token for {obj.name} created: {full_token}"
 msgstr "Создан токен дяя {obj.name} : {full_token}"
@@ -41,11 +41,11 @@ msgstr "Дата создания"
 msgid "Date of update"
 msgstr "Дата обновления"
 
-#: applications/models.py:21
+#: applications/models.py:21 applications/models.py:54
 msgid "Name"
 msgstr "Наименование"
 
-#: applications/models.py:22
+#: applications/models.py:22 applications/models.py:56
 msgid "Payment System"
 msgstr "Платежная система"
 
@@ -68,3 +68,19 @@ msgstr "Токен приложения"
 #: applications/models.py:43
 msgid "Application Tokens"
 msgstr "Токены приложения"
+
+#: applications/models.py:55
+msgid "Parameter Value"
+msgstr ""
+
+#: applications/models.py:59
+#, fuzzy
+#| msgid "Payment System"
+msgid "Payment System Paramter"
+msgstr "Платежная система"
+
+#: applications/models.py:60
+#, fuzzy
+#| msgid "Payment System"
+msgid "Payment System Paramtres"
+msgstr "Платежная система"
