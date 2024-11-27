@@ -10,7 +10,7 @@ from sqlalchemy.orm import selectinload
 import jwt
 
 from app.database_connector import get_async_session
-from app.models import Order, Application, PaymentItem, PaymentItemDiscount
+from app.models import Order, Application, PaymentItem, PaymentItemDiscount, PaymentSystemParamter
 from app.settings import settings
 
 
@@ -57,10 +57,7 @@ class OperationsService:
         return result.scalar_one_or_none()
 
     async def calculate_prices(self, payment_item, items_count):
-        print("===============")
-        print("calculate_prices")
         final_price = payment_item.price * items_count
-        print("final_price", final_price)
         # Создаем запрос на выборку скидок
         query = (
             select(PaymentItemDiscount)
@@ -82,7 +79,10 @@ class OperationsService:
             discount_value = discount_instance.discount_value
             discount_amount = final_price * (Decimal(discount_value) / 100)
             amount -= discount_amount
-        print("discount_value", discount_value)
-        print("amount", amount)
-        print("discount_amount", discount_amount)
         return final_price, amount, discount_value, discount_amount
+
+    async def get_payment_system_parametres(self, application_id):
+        query = select(PaymentSystemParamter).filter_by(application_id=application_id)
+        result = await self.session.execute(query)
+        params = result.scalars().all()
+        return {p.name: p.parameter_value for p in params}

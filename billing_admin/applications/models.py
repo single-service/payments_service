@@ -44,3 +44,20 @@ class ApplicationToken(AbstractBaseModel):
 
     def __str__(self):
         return self.token
+
+
+class PaymentSystemParamter(AbstractBaseModel):
+    # Relations
+    application = models.ForeignKey("applications.Application", on_delete=models.CASCADE)
+
+    # Fields
+    name = models.CharField(_("Name"), max_length=200)
+    parameter_value = models.CharField(_("Parameter Value"), max_length=200, null=True, blank=True)
+    payment_system = models.IntegerField(_("Payment System"), choices=PaymentSystemsChoices.choices)
+
+    class Meta:
+        verbose_name = _("Payment System Paramter")
+        verbose_name_plural = _("Payment System Paramtres")
+
+    def __str__(self):
+        return self.name

@@ -1,24 +1,20 @@
 import uuid
 from typing import Any, Dict, Optional, Tuple
 
-from django.contrib.auth import get_user_model
-
-from billing.payment_systems.main_interface import PaymentSystemInterface
+from app.services.payment_systems.main_interface import PaymentSystemInterface
 
 
-User = get_user_model()
+class DummyPaymentSystemService(PaymentSystemInterface):
 
+    def __init__(self):
+        self.HOST = None
 
-class PaymentSystemService(PaymentSystemInterface):
-    host = "core.ai.conlami.com"
-
-    @classmethod
-    def create_link(cls, payment_data: Dict[str, Any], purchaser: User) -> str:
+    def create_link(self, final_amount, user_email, description, payment_id, invoice_id=0) -> str:
         """Creates link for the given user's payment"""
-        user_id = purchaser.id
-        value = payment_data["sum"]
-        currency_name = payment_data["currency_name"]
-        return cls._generate_link(user_id, value, currency_name)
+        user_id = user_email
+        value = final_amount
+        currency_name = payment_id
+        return self._generate_link(user_id, value, currency_name)
 
     @classmethod
     def check_payment(cls, payment_data: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
@@ -30,10 +26,10 @@ class PaymentSystemService(PaymentSystemInterface):
         }
         return result, None
 
-    @classmethod
-    def _generate_link(cls, user_id: uuid.UUID, value: float, currency_name: str) -> str:
+
+    def _generate_link(self, user_id: uuid.UUID, value: float, currency_name: str) -> str:
         return "https://%(host)s/billing/dummy-payment?user_id=%(user_id)s&sum=%(sum)s&currency=%(currency)s" % {
-            "host": cls.host,
+            "host": self.HOST,
             "user_id": user_id,
             "sum": value,
             "currency": currency_name,

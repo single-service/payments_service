@@ -13,7 +13,8 @@ from django.utils.translation import gettext as _
 from unfold.admin import ModelAdmin
 from unfold.decorators import action
 
-from .models import Application, ApplicationToken
+from .models import Application, ApplicationToken, PaymentSystemParamter
+from .choices import PAYMENT_SYSTEM_PARAMETERS_MAP
 
 
 admin.site.unregister(User)
@@ -30,10 +31,14 @@ class GroupAdmin(BaseGroupAdmin, ModelAdmin):
     pass
 
 
+class PaymentSystemParamterInline(admin.TabularInline):
+    model = PaymentSystemParamter
+
 
 @admin.register(Application)
 class ApplicationAdmin(ModelAdmin):
     actions = ['create_token']
+    inlines = [PaymentSystemParamterInline]
 
     @admin.action(description=_('Create token'))
     def create_token(modeladmin, request, queryset):
@@ -54,6 +59,27 @@ class ApplicationAdmin(ModelAdmin):
                 salt=salt,
             )
             messages.success(request, _(f"Token for {obj.name} created: {full_token}"))
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        PaymentSystemParamter.objects.filter(application_id=obj.id).exclude(payment_system=obj.payment_system).delete()
+        existed_parameters = PaymentSystemParamter.objects.filter(application_id=obj.id, payment_system=obj.payment_system)
+        existed_parameters_names = set([x.name for x in existed_parameters])
+        parameters = set(PAYMENT_SYSTEM_PARAMETERS_MAP.get(obj.payment_system))
+        if not parameters:
+            return
+        # Remove not existed parameteres in map
+        params2delete = [name for name in existed_parameters_names if name not in parameters]
+        if params2delete:
+            PaymentSystemParamter.objects.filter(application_id=obj.id, name__in=params2delete).delete()
+        for param in parameters:
+            if param in existed_parameters_names:
+                continue
+            PaymentSystemParamter.objects.create(
+                application_id=obj.id,
+                payment_system=obj.payment_system,
+                name=param,
+            )
 
 
 @admin.register(ApplicationToken)

@@ -33,7 +33,8 @@ class Order(AbstractBaseModel):
     amount = models.DecimalField(_("Real Amount"), max_digits=11, decimal_places=2, null=True, blank=True)
     discount_amount = models.DecimalField(_("Discount Amount"), max_digits=11, decimal_places=2, null=True, blank=True)
     final_price = models.DecimalField(_("Final Price"), max_digits=11, decimal_places=2, null=True, blank=True)
-    payment_system_order_id = models.CharField("Order Id In Pay System", max_length=300, default="")
+    payment_system_order_id = models.CharField(_("Order Id In Pay System"), max_length=300, default="")
+    payment_link = models.CharField(_("Payment Link"), max_length=300, default="")
 
     class Meta:
         verbose_name = _("Order")

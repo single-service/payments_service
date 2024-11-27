@@ -7,6 +7,7 @@ from sqlalchemy.orm import relationship
 
 Application = AutoBase.classes.applications_application
 ApplicationToken = AutoBase.classes.applications_applicationtoken
+PaymentSystemParamter = AutoBase.classes.applications_paymentsystemparamter
 
 PaymentItemsGroup = AutoBase.classes.payments_paymentitemsgroup
 PaymentItem = AutoBase.classes.payments_paymentitem

@@ -3,20 +3,20 @@ import hashlib
 from urllib import parse
 from typing import Any, Dict, Optional, Tuple
 
-from django.conf import settings
-from rest_framework.request import Request
+# from django.conf import settings
+# from rest_framework.request import Request
 
-from billing.models import UserPayment
-from billing.payment_systems.main_interface import PaymentSystemInterface
-from users.models import User
+# from billing.models import UserPayment
+# from billing.payment_systems.main_interface import PaymentSystemInterface
+from app.services.payment_systems.main_interface import PaymentSystemInterface
 
 
-class PaymentSystemService(PaymentSystemInterface):
+class RobokassaPaymentSystemService(PaymentSystemInterface):
     def __init__(self):
-        self.pass1 = settings.ROBOKASSA_PASSWORD_1
-        self.pass2 = settings.ROBOKASSA_PASSWORD_2
-        self.login = settings.ROBOKASSA_LOGIN
-        self.test = settings.ROBOKASSA_TEST
+        self.ROBOKASSA_PASSWORD_1 = None, # settings.ROBOKASSA_PASSWORD_1
+        self.ROBOKASSA_PASSWORD_2 = None, # settings.ROBOKASSA_PASSWORD_2
+        self.ROBOKASSA_LOGIN = None, # settings.ROBOKASSA_LOGIN
+        self.ROBOKASSA_TEST = None, # settings.ROBOKASSA_TEST
         self.robokassa_payment_url = 'https://auth.robokassa.ru/Merchant/Index.aspx'
 
     def _parse_response(self, request: str) -> dict:
@@ -54,28 +54,29 @@ class PaymentSystemService(PaymentSystemInterface):
 
         return signature.lower() == received_signature.lower()
 
-    def create_link(self, payment_data: Dict[str, Any], purchaser: User, user_payment: UserPayment) -> str:
+    def create_link(self, final_amount, user_email, description, payment_id, invoice_id=0) -> str:
         signature = self._calculate_signature(
-            self.login,
-            payment_data['total_amount'],
-            0,
-            self.pass1,
-            f"Shp_user_payment_id={user_payment.id}",
+            self.ROBOKASSA_LOGIN,
+            final_amount,
+            invoice_id,
+            self.ROBOKASSA_PASSWORD_1,
+            f"Shp_user_payment_id={payment_id}",
         )
+        self.ROBOKASSA_TEST = 1 if str(self.ROBOKASSA_TEST) == "1" else 0
 
         data = {
-            'MerchantLogin': self.login,
-            'OutSum': payment_data['total_amount'],
-            'InvId': 0,
-            'Description': user_payment.expense.name_ru,
+            'MerchantLogin': self.ROBOKASSA_LOGIN,
+            'OutSum': final_amount,
+            'InvId': invoice_id,
+            'Description': description,
             'SignatureValue': signature,
-            'IsTest': self.test,
-            'Shp_user_payment_id': user_payment.id,
-            'Email': purchaser.email
+            'IsTest': self.ROBOKASSA_TEST,
+            'Shp_user_payment_id': payment_id,
+            'Email': user_email
         }
         return f'{self.robokassa_payment_url}?{parse.urlencode(data)}'
 
-    def check_payment(self, request: Request) -> Tuple[Optional[dict], Optional[str]]:
+    def check_payment(self, request) -> Tuple[Optional[dict], Optional[str]]:
         """Verification of notification (ResultURL).
         :param request: HTTP parameters.
         """
@@ -87,9 +88,9 @@ class PaymentSystemService(PaymentSystemInterface):
         signature = param_request['SignatureValue']
         user_payment_id = param_request['Shp_user_payment_id']
 
-        user_payment = UserPayment.objects.select_related('payment_method', 'user').filter(id=user_payment_id).first()
-        if not user_payment:
-            return None, "UserPayment not found"
+        # user_payment = UserPayment.objects.select_related('payment_method', 'user').filter(id=user_payment_id).first()
+        # if not user_payment:
+        #     return None, "UserPayment not found"
 
         is_valid_signature = self._check_signature_result(
             payment_id,
@@ -99,7 +100,7 @@ class PaymentSystemService(PaymentSystemInterface):
             Shp_user_payment_id=user_payment_id,  # Дополнительный параметр
         )
         data = {
-            "user_payment": user_payment,
+            # "user_payment": user_payment,
             "payment_id": payment_id,
             "sum": cost,
             "fee": fee

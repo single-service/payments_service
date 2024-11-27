@@ -1,11 +1,13 @@
+from datetime import datetime
 from typing import List
+import uuid
 
 from fastapi import APIRouter, Depends, Query, HTTPException
 
 from app.schemas.billing import OrdersSchema, RefundRequest, CreateOrderRequest
 from app.utils.auth import TokenAuth
 from app.services.operations_service import OperationsService
-from app.enums import OrderStatusChoices
+from app.enums import OrderStatusChoices, PAYMENT_SYSTEM_SERVICES_MAP
 
 
 router = APIRouter()
@@ -98,11 +100,31 @@ async def refund_order(
             status_code=400,
             detail="You couldn't pay this item"
         )
-
-    # Подтягиваем application получаем недостающие данные
     application = await operations_service.get_application(application_id)
+    payment_service_cls = PAYMENT_SYSTEM_SERVICES_MAP.get(application.payment_system)
+    if not payment_service_cls:
+        raise HTTPException(
+            status_code=400,
+            detail="This payment system is not ready"
+        )
+    # Подтягиваем application получаем недостающие данные
     final_price, amount, discount_value, discount_amount = await operations_service.calculate_prices(payment_item, create_body.items_count)
+    payment_system_parametres = await operations_service.get_payment_system_parametres(application_id)
+    payment_service = payment_service_cls()
+    payment_service.set_system_parameters(**payment_system_parametres)
+    operation_id = str(uuid.uuid4())
+    link = payment_service.create_link(
+        final_amount=final_price,
+        user_email=create_body.user_email,
+        description=payment_item.description,
+        payment_id=payment_item.id,
+        invoice_id=operation_id
+    )
+
     payload = dict(
+        id=operation_id, # рассчитать
+        created_dt=datetime.now(),
+        updated_dt=datetime.now(),
         application_id=application_id,
         payment_item_id=create_body.payment_item_id,
         payment_system=application.payment_system,
@@ -119,8 +141,12 @@ async def refund_order(
         idempotent_key=create_body.idempotent_key,
         amount=amount,
         discount_amount=discount_amount,
-        payment_system_order_id=0, # рассчитать
+        payment_system_order_id=None,  # рассчитать
+        payment_link=link,  # рассчитать
     )
     # Получаем ссылку
     
+    # Добавляем операцию
+
+    # Возвращаем payload с операцией
     return payload

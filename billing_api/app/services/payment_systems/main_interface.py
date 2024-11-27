@@ -1,24 +1,25 @@
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional, Tuple
+from decimal import Decimal
 
-from django.contrib.auth import get_user_model
-from rest_framework.request import Request
+from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from billing.models import UserPayment
-
-
-User = get_user_model()
+from app.database_connector import get_async_session
 
 
 class PaymentSystemInterface(ABC):
-    host: str = None
 
     @abstractmethod
-    def create_link(self, payment_data: Dict[str, Any], purchaser: User, user_payment: UserPayment):
+    def create_link(self, final_amount: Decimal, user_email: str, description: Optional[str], order_id: str, invoice_id: str):
         """Creates payment link"""
         raise NotImplementedError()
 
     @abstractmethod
-    def check_payment(self, request: Request) -> Tuple[Optional[dict], Optional[str]]:
+    def check_payment(self, request) -> Tuple[Optional[dict], Optional[str]]:
         """Checks the success of the payment"""
         raise NotImplementedError()
+
+    def set_system_parameters(self, *args, **kwargs):
+        for param_name, param_value in kwargs.items():
+            setattr(self, param_name, param_value)
