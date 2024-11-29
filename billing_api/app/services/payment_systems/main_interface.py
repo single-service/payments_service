@@ -11,7 +11,7 @@ from app.database_connector import get_async_session
 class PaymentSystemInterface(ABC):
 
     @abstractmethod
-    def create_link(self, final_amount: Decimal, user_email: str, description: Optional[str], order_id: str, invoice_id: str):
+    def create_link(self, final_amount: Decimal, user_email: str, description: Optional[str], order_id: str, invoice_id: str, is_subscription=False):
         """Creates payment link"""
         raise NotImplementedError()
 

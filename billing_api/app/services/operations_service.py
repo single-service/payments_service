@@ -109,6 +109,7 @@ class OperationsService:
         discount_amount,
         payment_system_order_id,
         payment_link,
+        is_subscription_first_order,
     ):
         new_order = dict(
             id=id,
@@ -132,6 +133,7 @@ class OperationsService:
             discount_amount=discount_amount,
             payment_system_order_id=payment_system_order_id,
             payment_link=payment_link,
+            is_subscription_first_order=is_subscription_first_order
         )
         try:
             await self.session.execute(insert(Order).values(**new_order))

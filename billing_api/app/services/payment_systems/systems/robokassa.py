@@ -54,7 +54,7 @@ class RobokassaPaymentSystemService(PaymentSystemInterface):
 
         return signature.lower() == received_signature.lower()
 
-    def create_link(self, final_amount, user_email, description, payment_id, invoice_id=0) -> str:
+    def create_link(self, final_amount, user_email, description, payment_id, invoice_id=0, is_subscription=False) -> str:
         signature = self._calculate_signature(
             self.ROBOKASSA_LOGIN,
             final_amount,
@@ -72,7 +72,8 @@ class RobokassaPaymentSystemService(PaymentSystemInterface):
             'SignatureValue': signature,
             'IsTest': self.ROBOKASSA_TEST,
             'Shp_user_payment_id': payment_id,
-            'Email': user_email
+            'Email': user_email,
+            'Recurring': "true" if is_subscription else "false",
         }
         return f'{self.robokassa_payment_url}?{parse.urlencode(data)}'
 

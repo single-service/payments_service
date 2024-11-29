@@ -69,7 +69,7 @@ async def cancel_order(
     )
 
 @router.post("/operations/")
-async def refund_order(
+async def create_order(
     create_body: CreateOrderRequest,
     application_id=Depends(TokenAuth),
     operations_service = Depends(OperationsService),
@@ -97,13 +97,15 @@ async def refund_order(
     payment_service = payment_service_cls()
     payment_service.set_system_parameters(**payment_system_parametres)
     operation_id = str(uuid.uuid4())
+    is_subscription_first_order = True if payment_item.is_subscription else None
     # Получаем ссылку
     link = payment_service.create_link(
         final_amount=amount,
         user_email=create_body.user_email,
         description=payment_item.description,
         payment_id=payment_item.id,
-        invoice_id=operation_id
+        invoice_id=operation_id,
+        is_subscription=payment_item.is_subscription
     )
     # Добавляем операцию
     payload = dict(
@@ -128,6 +130,7 @@ async def refund_order(
         discount_amount=discount_amount,
         payment_system_order_id=None,  # рассчитать
         payment_link=link,  # рассчитать
+        is_subscription_first_order=is_subscription_first_order,
     )
     create_status = await operations_service.create_order(**payload)
     if not create_status:

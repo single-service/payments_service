@@ -36,6 +36,7 @@ class Order(AbstractBaseModel):
     final_price = models.DecimalField(_("Final Price"), max_digits=11, decimal_places=2, null=True, blank=True)
     payment_system_order_id = models.CharField(_("Order Id In Pay System"), max_length=300, default=None, null=True, blank=True)
     payment_link = models.CharField(_("Payment Link"), max_length=300, default="")
+    is_subscription_first_order = models.BooleanField(_("First subscription order"), default=None, null=True, blank=True)
 
     class Meta:
         verbose_name = _("Order")
