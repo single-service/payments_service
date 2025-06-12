@@ -6,7 +6,7 @@ import re
 class CommonConfig:
     # App
     API_HOST = os.getenv("HOST", "0.0.0.0")  # noqa: S104
-    API_PORT = 8000
+    API_PORT = 8009
     RELOAD = True
     DEBUG: bool = os.getenv("DEBUG", False) in ["1", "True", "true", "y", True, 1]
     SHOW_DOCS: bool = True

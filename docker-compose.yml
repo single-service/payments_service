@@ -29,15 +29,3 @@ services:
     env_file:
       - .envs/.admin
     restart: on-failure
-
-  api:
-    build:
-      context: .
-      dockerfile: ./compose/api/Dockerfile
-    depends_on:
-      - db
-    ports:
-      - "8007:8000"
-    env_file:
-      - .envs/.api
-    restart: on-failure

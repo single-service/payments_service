@@ -34,6 +34,8 @@ COPY ./compose/admin/start /start
 RUN sed -i 's/\r$//g' /start && chmod +x /start
 COPY ./compose/admin/entrypoint /entrypoint
 RUN sed -i 's/\r$//g' /entrypoint && chmod +x /entrypoint
+COPY ./compose/admin/api_start /api_start
+RUN sed -i 's/\r$//g' /api_start && chmod +x /api_start
 
 # Копируем конфигурацию nginx
 RUN rm /etc/nginx/nginx.conf
@@ -45,6 +47,8 @@ COPY compose/admin/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 # Копируем все файлы приложения
 COPY ./billing_admin .
+
+COPY ./billing_api ./billing_api
 
 ENTRYPOINT [ "/entrypoint" ]
 # Запуск supervisord
