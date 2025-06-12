@@ -1,4 +1,5 @@
 #  Сервис платежей
+repo - (https://gitverse.ru/disosedov/payment-service)
 
 ### Компоненты
 db - PostgresBD
@@ -32,4 +33,4 @@ API - http://0.0.0.0:8007/api/v1/docs
 - [X] Перенести апи в контейнер
 - [ ] Колбэкурл
 - [ ] Фискализация
-- [ ] Скрипт публикации в DockerHub
+- [X] Скрипт публикации в DockerHub
