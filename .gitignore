@@ -96,3 +96,4 @@ billing_admin/media/
 billing_admin/static/
 billing_admin/.config/
 script_folder/*
+.env
