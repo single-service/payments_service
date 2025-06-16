@@ -1,5 +1,6 @@
 #  Сервис платежей
 repo - (https://gitverse.ru/disosedov/payment-service)
+dockerhub - (https://hub.docker.com/repository/docker/singleservice/ru_billing_service/general)
 
 ### Компоненты
 db - PostgresBD
