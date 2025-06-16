@@ -5,7 +5,7 @@ import uuid
 
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import insert, select, func, desc
+from sqlalchemy import insert, select, func, desc, update
 from sqlalchemy.orm import selectinload
 import jwt
 
@@ -109,6 +109,7 @@ class OperationsService:
         discount_amount,
         payment_system_order_id,
         payment_link,
+        invoice_id,
         is_subscription_first_order,
     ):
         new_order = dict(
@@ -133,12 +134,37 @@ class OperationsService:
             discount_amount=discount_amount,
             payment_system_order_id=payment_system_order_id,
             payment_link=payment_link,
-            is_subscription_first_order=is_subscription_first_order
+            is_subscription_first_order=is_subscription_first_order,
+            invoice_id=invoice_id
         )
         try:
             await self.session.execute(insert(Order).values(**new_order))
             await self.session.commit()
         except Exception as e:
             print(f"Create user Exception: {e}")
+            return False
+        return True
+    
+    async def update_order(self, id: str, **kwargs):
+        """
+        Обновляет заказ в базе данных.
+        
+        :param id: Идентификатор заказа
+        :param kwargs: Ключи и значения полей, которые нужно обновить
+        :return: Возвращает True, если обновление прошло успешно, иначе False
+        """
+        try:
+            # Формирование запроса на обновление
+            stmt = (
+                update(Order)
+                .where(Order.id == id)
+                .values(kwargs)
+            )
+            
+            # Выполнение обновления
+            await self.session.execute(stmt)
+            await self.session.commit()
+        except Exception as e:
+            print(f"Update order exception: {e}")
             return False
         return True

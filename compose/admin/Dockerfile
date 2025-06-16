@@ -1,5 +1,5 @@
 # Базовый образ
-FROM python:3.12
+FROM python:3.12-slim
 
 # Отключаем буферизацию и записывание байт-кода
 ENV PYTHONUNBUFFERED=1

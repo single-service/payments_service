@@ -9,7 +9,7 @@ class DummyPaymentSystemService(PaymentSystemInterface):
     def __init__(self):
         self.HOST = None
 
-    def create_link(self, final_amount, user_email, description, payment_id, invoice_id=0, is_subscription=False) -> str:
+    def create_link(self, final_amount, user_email, description, payment_id, operation_id=0, is_subscription=False) -> str:
         """Creates link for the given user's payment"""
         user_id = user_email
         value = final_amount

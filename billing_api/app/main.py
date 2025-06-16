@@ -55,17 +55,13 @@ async def validation_exception_handler(request, exc):
 root_router = APIRouter()
 
 root_router.include_router(base.router)
-
 app.include_router(root_router)
 
 
 CORS_ALLOW_METHODS = ['DELETE', 'GET', 'OPTIONS', 'PATCH', 'POST', 'PUT']
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "https://hub2.ai",
-    ],
+    allow_origins=["*"],
     # allow_credentials=True,
     allow_methods=CORS_ALLOW_METHODS,
     allow_headers=["*"],

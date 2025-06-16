@@ -1,8 +1,8 @@
 from datetime import datetime
-from typing import List
+from typing import Annotated
 import uuid
 
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException, Request, Path
 
 from app.schemas.billing import OrdersSchema, RefundRequest, CreateOrderRequest
 from app.utils.auth import TokenAuth
@@ -104,14 +104,15 @@ async def create_order(
         user_email=create_body.user_email,
         description=payment_item.description,
         payment_id=payment_item.id,
-        invoice_id=operation_id,
+        operation_id=operation_id,
         is_subscription=payment_item.is_subscription
     )
     # Добавляем операцию
     payload = dict(
-        id=operation_id, # рассчитать
+        id=operation_id,
         created_dt=datetime.now(),
         updated_dt=datetime.now(),
+        invoice_id="",
         application_id=application_id,
         payment_item_id=create_body.payment_item_id,
         payment_system=application.payment_system,
@@ -128,8 +129,8 @@ async def create_order(
         idempotent_key=create_body.idempotent_key,
         amount=amount,
         discount_amount=discount_amount,
-        payment_system_order_id=None,  # рассчитать
-        payment_link=link,  # рассчитать
+        payment_system_order_id=None,
+        payment_link=link,
         is_subscription_first_order=is_subscription_first_order,
     )
     create_status = await operations_service.create_order(**payload)
@@ -139,3 +140,61 @@ async def create_order(
             detail="Order create failed"
         )
     return payload
+
+
+@router.post("/order/payment/{payment_method}/")
+async def payment_callback(
+    request: Request,
+    payment_method: Annotated[str, Path(title="Payment method")],
+    operations_service = Depends(OperationsService),
+):
+    """
+    Колбэк-платежный эндпоинт для приема уведомлений о платежах.
+    
+    :param request: объект запроса, содержащий заголовки и тело
+    :param payment_method: строка, идентифицирующая используемый метод оплаты
+    """
+    print("payment_method", payment_method)
+    try:
+        payment_service_cls = PAYMENT_SYSTEM_SERVICES_MAP.get(int(payment_method))
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail="Technical Error"
+        )
+    if not payment_service_cls:
+        raise HTTPException(
+            status_code=400,
+            detail="This payment system is not ready"
+        )
+    print("payment_service_cls", payment_service_cls)
+    
+    # Чтение тела запроса
+    body = await request.body()
+    payload = body.decode()
+    payment_service = payment_service_cls()
+    data = payment_service.prepare_payload(payload)
+    print("========")
+    print("Data: ", data)
+    operation = await operations_service.get_operation(data["operation_id"])
+    if not operation:
+        raise HTTPException(
+            status_code=400,
+            detail="Wrong operation"
+        )
+    payment_system_parametres = await operations_service.get_payment_system_parametres(operation.application_id)
+    payment_service.set_system_parameters(**payment_system_parametres)
+    print("------- operation", operation)
+    error = payment_service.check_payment(operation, data)
+    if error:
+        raise HTTPException(
+            status_code=400,
+            detail=error
+        )
+    update_fields = [
+        "payment_dt", "status", "fee", "invoice_id",
+        "receipt_link", "crc",
+    ]
+    update_data = {field_name: data.get(field_name) for field_name in update_fields}
+    await operations_service.update_order(data['operation_id'], **update_data)
+    return {"detail": "OK"}
