@@ -2,7 +2,8 @@ from datetime import datetime
 from typing import Annotated
 import uuid
 
-from fastapi import APIRouter, Depends, Query, HTTPException, Request, Path
+import aiohttp
+from fastapi import APIRouter, Depends, Query, HTTPException, Request, Path, BackgroundTasks
 
 from app.schemas.billing import OrdersSchema, RefundRequest, CreateOrderRequest
 from app.utils.auth import TokenAuth
@@ -83,10 +84,14 @@ async def create_order(
         operations_service=operations_service,
     )
     if error:
-        raise HTTPException(
-            status_code=400,
-            detail=error
-        )
+        if error == "Operation created yet":
+            operation = validated_data["operation"]
+            return operation
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail=error
+            )
     application = validated_data["application"]
     payment_item = validated_data["payment_item"]
     payment_service_cls = validated_data["payment_service_cls"]
@@ -141,9 +146,17 @@ async def create_order(
         )
     return payload
 
+async def perform_callback(application_callback_url: str, payload: dict):
+    """Выполняет асинхронный POST-запрос."""
+    headers = {'Content-Type': 'application/json'}
+    async with aiohttp.ClientSession() as session:
+        async with session.post(application_callback_url, json=payload, headers=headers) as resp:
+            return await resp.text()
+
 
 @router.post("/order/payment/{payment_method}/")
 async def payment_callback(
+    background_tasks: BackgroundTasks,
     request: Request,
     payment_method: Annotated[str, Path(title="Payment method")],
     operations_service = Depends(OperationsService),
@@ -184,7 +197,6 @@ async def payment_callback(
         )
     payment_system_parametres = await operations_service.get_payment_system_parametres(operation.application_id)
     payment_service.set_system_parameters(**payment_system_parametres)
-    print("------- operation", operation)
     error = payment_service.check_payment(operation, data)
     if error:
         raise HTTPException(
@@ -197,4 +209,19 @@ async def payment_callback(
     ]
     update_data = {field_name: data.get(field_name) for field_name in update_fields}
     await operations_service.update_order(data['operation_id'], **update_data)
+
+    # Подготовка callback
+    payload = {
+        "operation_id": operation.id,
+        "invoice_id": operation.invoice_id,
+        "final_price": float(operation.final_price),
+        "discount_amount": float(operation.discount_amount),
+        "user_id": operation.user_id,
+        "receipt_link": operation.receipt_link,
+        "fee": operation.fee,
+        "currency": operation.currency,
+    }
+    application = await operations_service.get_application(operation.application_id)
+    if application.callback_url:
+        background_tasks.add_task(perform_callback, application.callback_url, payload)
     return {"detail": "OK"}

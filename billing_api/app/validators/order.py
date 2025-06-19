@@ -14,7 +14,9 @@ async def validate_create_order(application_id, idempotent_key, items_count, pay
         idempotent_key=idempotent_key
     )
     if operation_exist:
-        return None, "Operation created yet"
+        return {
+            "operation": operation_exist
+        }, "Operation created yet"
     # Проверка items_count 
     if items_count <= 0:
         return None, "Items count need to be grater then 0"

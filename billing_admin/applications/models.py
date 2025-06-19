@@ -20,6 +20,7 @@ class AbstractBaseModel(models.Model):
 class Application(AbstractBaseModel):
     name = models.CharField(_("Name"), max_length=200)
     payment_system = models.IntegerField(_("Payment System"), choices=PaymentSystemsChoices.choices)
+    callback_url = models.URLField(_("Callback Url"), null=True, blank=True, default=None)
 
     class Meta:
         verbose_name = _("Application")
