@@ -153,6 +153,7 @@ async def create_order(
         payment_system_order_id=None,
         payment_link=link,
         is_subscription_first_order=is_subscription_first_order,
+        nomenclature=nomenclature,
     )
     create_status = await operations_service.create_order(**payload)
     if not create_status:

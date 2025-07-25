@@ -12,5 +12,5 @@ class OrderAdmin(ModelAdmin):
     list_display = [
         "created_dt", "application", "status", "final_price", "currency", "is_subscription",
         "items_count", "discount_value", "payment_dt", "fee",
-        "refund_dt", "refund_amount"
     ]
+    ordering = ('-created_dt',)  

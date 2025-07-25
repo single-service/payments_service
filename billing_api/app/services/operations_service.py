@@ -111,6 +111,7 @@ class OperationsService:
         payment_link,
         invoice_id,
         is_subscription_first_order,
+        nomenclature=None,
     ):
         new_order = dict(
             id=id,
@@ -135,7 +136,8 @@ class OperationsService:
             payment_system_order_id=payment_system_order_id,
             payment_link=payment_link,
             is_subscription_first_order=is_subscription_first_order,
-            invoice_id=invoice_id
+            invoice_id=invoice_id,
+            nomenclature=nomenclature
         )
         try:
             await self.session.execute(insert(Order).values(**new_order))
