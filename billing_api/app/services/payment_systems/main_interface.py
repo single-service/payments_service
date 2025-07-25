@@ -11,13 +11,18 @@ from app.database_connector import get_async_session
 class PaymentSystemInterface(ABC):
 
     @abstractmethod
-    def create_link(self, final_amount: Decimal, user_email: str, description: Optional[str], order_id: str, invoice_id: str, is_subscription=False):
+    def create_link(self, final_amount: Decimal, user_email: str, description: Optional[str], order_id: str, invoice_id: str, is_subscription=False, nomenclature=None):
         """Creates payment link"""
         raise NotImplementedError()
 
     @abstractmethod
     def check_payment(self, request) -> Tuple[Optional[dict], Optional[str]]:
         """Checks the success of the payment"""
+        raise NotImplementedError()
+    
+    @abstractmethod
+    def get_nomenclature(self, base_sno, base_nds, base_items) -> Tuple[Optional[dict], Optional[str]]:
+        """Get nomenclature"""
         raise NotImplementedError()
 
     def set_system_parameters(self, *args, **kwargs):

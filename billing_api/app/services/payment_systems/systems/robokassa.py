@@ -1,7 +1,8 @@
 import decimal
 import hashlib
+import json
 from urllib import parse
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, List
 import random
 from decimal import Decimal
 from datetime import datetime
@@ -13,6 +14,28 @@ from datetime import datetime
 # from billing.payment_systems.main_interface import PaymentSystemInterface
 from app.services.payment_systems.main_interface import PaymentSystemInterface
 from app.services.operations_service import OperationsService
+
+
+ROBOKASSA_SNO_MAP = {
+    1: "osn",
+    2: "usn_income",
+    3: "usn_income_outcome",
+    4: "esn",
+    5: "patent",
+}
+
+ROBOKASSA_TAX_MAP = {
+    1: "none",
+    2: "vat0",
+    3: "vat10",
+    4: "vat110",
+    5: "vat20",
+    7: "vat120",
+    8: "vat5",
+    9: "vat7",
+    10: "vat105",
+    11: "vat107",
+}
 
 
 class RobokassaPaymentSystemService(PaymentSystemInterface):
@@ -59,15 +82,12 @@ class RobokassaPaymentSystemService(PaymentSystemInterface):
         return signature.lower() == received_signature.lower()
     
 
-    def create_link(self, final_amount, user_email, description, payment_id, operation_id=0, is_subscription=False) -> str:
-        signature = self._calculate_signature(
-            self.ROBOKASSA_LOGIN,
-            final_amount,
-            "",
-            self.ROBOKASSA_PASSWORD_1,
-            f"Shp_operation_id={operation_id}",
-            f"Shp_user_payment_id={payment_id}",
-        )
+    def create_link(self, final_amount, user_email, description, payment_id, operation_id=0, is_subscription=False, nomenclature=None) -> str:
+        signature_args = [self.ROBOKASSA_LOGIN, final_amount, ""]
+        if nomenclature:
+            signature_args.append(json.dumps(nomenclature))
+        signature_args += [self.ROBOKASSA_PASSWORD_1, f"Shp_operation_id={operation_id}", f"Shp_user_payment_id={payment_id}"]
+        signature = self._calculate_signature(*signature_args)
         self.ROBOKASSA_TEST = 1 if str(self.ROBOKASSA_TEST) == "1" else 0
 
         data = {
@@ -82,6 +102,8 @@ class RobokassaPaymentSystemService(PaymentSystemInterface):
             'Email': user_email,
             'Recurring': "true" if is_subscription else "false",
         }
+        if nomenclature:
+            data['Receipt'] = json.dumps(nomenclature)
         return f'{self.robokassa_payment_url}?{parse.urlencode(data)}'
 
     def check_payment(self, operation, payload) -> Tuple[Optional[dict], Optional[str]]:
@@ -122,3 +144,22 @@ class RobokassaPaymentSystemService(PaymentSystemInterface):
                 "Shp_user_payment_id": param_request["Shp_user_payment_id"]
             }
         }
+    
+    def get_nomenclature(self, base_sno, base_nds, base_items: List[dict]) -> Tuple[Optional[dict], Optional[str]]:
+        """Get nomenclature"""
+        sno = ROBOKASSA_SNO_MAP.get(base_sno)
+        tax = ROBOKASSA_TAX_MAP.get(base_nds)
+        items = [
+            dict(
+                name=item.get("name"),
+                quantity=item.get("count"),
+                sum=float(item.get("amount")),
+                tax=tax,
+                cost=float(item.get("cost"))
+            ) for item in base_items
+        ]
+        nomenclature = {
+            "sno": sno,
+            "items": items
+        }
+        return nomenclature

@@ -3,7 +3,7 @@ import uuid
 from django.db import models
 from django.utils.translation import gettext as _
 
-from .choices import PaymentSystemsChoices
+from .choices import PaymentSystemsChoices, SnoChoices, TaxChoices
 
 
 
@@ -21,6 +21,19 @@ class Application(AbstractBaseModel):
     name = models.CharField(_("Name"), max_length=200)
     payment_system = models.IntegerField(_("Payment System"), choices=PaymentSystemsChoices.choices)
     callback_url = models.URLField(_("Callback Url"), null=True, blank=True, default=None)
+    is_fiscalisation = models.BooleanField(_("Is Fiscalization"), default=False)
+    sno = models.IntegerField(
+        _("Налогоблажение(Если включена фискализация)"),
+        choices=SnoChoices.choices,
+        null=True,
+        default=None
+    )
+    tax = models.IntegerField(
+        _("НДС(Если налогоблажение Общая СН)"),
+        choices=TaxChoices.choices,
+        null=True,
+        default=TaxChoices.NO_NDS
+    )
 
     class Meta:
         verbose_name = _("Application")

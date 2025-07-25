@@ -39,6 +39,7 @@ class Order(AbstractBaseModel):
     is_subscription_first_order = models.BooleanField(_("First subscription order"), default=None, null=True, blank=True)
     invoice_id = models.TextField(_("Invoice Id"), default=None, null=True, blank=True)
     crc = models.TextField(_("CRC"), default=None, null=True, blank=True)
+    nomenclature = models.JSONField(_("Nomenclature"), blank=True, default=None, null=True)
 
     class Meta:
         verbose_name = _("Order")

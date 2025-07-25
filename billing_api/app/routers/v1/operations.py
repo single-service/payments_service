@@ -103,6 +103,21 @@ async def create_order(
     payment_service.set_system_parameters(**payment_system_parametres)
     operation_id = str(uuid.uuid4())
     is_subscription_first_order = True if payment_item.is_subscription else None
+    nomenclature = None
+    if application.is_fiscalisation:
+        base_items = [
+            {
+                "name": payment_item.name,
+                "cost": payment_item.price,
+                "count": create_body.items_count,
+                "amount": amount,
+            }
+        ]
+        nomenclature = payment_service.get_nomenclature(
+            base_sno=application.sno,
+            base_nds=application.tax,
+            base_items=base_items,
+        )
     # Получаем ссылку
     link = payment_service.create_link(
         final_amount=amount,
@@ -110,7 +125,8 @@ async def create_order(
         description=payment_item.description,
         payment_id=payment_item.id,
         operation_id=operation_id,
-        is_subscription=payment_item.is_subscription
+        is_subscription=payment_item.is_subscription,
+        nomenclature=nomenclature
     )
     # Добавляем операцию
     payload = dict(
