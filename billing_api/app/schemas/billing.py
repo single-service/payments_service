@@ -36,5 +36,5 @@ class CreateOrderRequest(BaseModel):
     payment_item_id: str
     items_count: int
     user_id: str
-    user_email: str
+    user_email: Optional[str] = None
     idempotent_key: str
