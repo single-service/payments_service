@@ -99,9 +99,10 @@ class RobokassaPaymentSystemService(PaymentSystemInterface):
             'IsTest': self.ROBOKASSA_TEST,
             'Shp_operation_id': operation_id,
             'Shp_user_payment_id': payment_id,
-            'Email': user_email,
             'Recurring': "true" if is_subscription else "false",
         }
+        if user_email:
+            data['Email'] = user_email
         if nomenclature:
             data['Receipt'] = json.dumps(nomenclature)
         return f'{self.robokassa_payment_url}?{parse.urlencode(data)}'
