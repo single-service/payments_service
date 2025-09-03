@@ -44,3 +44,14 @@ class Order(AbstractBaseModel):
     class Meta:
         verbose_name = _("Order")
         verbose_name_plural = _("Orders")
+
+
+class Expense(AbstractBaseModel):
+
+    name = models.CharField(_("Expense name"), max_length=250)
+    expense_date = models.DateField(_("Date"))
+    amount = models.DecimalField(_("Amount"), max_digits=11, decimal_places=2, null=True, blank=True)
+
+    class Meta:
+        verbose_name = _("Expense")
+        verbose_name_plural = _("Expenses")
