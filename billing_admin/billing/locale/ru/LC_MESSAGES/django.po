@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-11-27 01:40-0600\n"
+"POT-Creation-Date: 2025-09-03 05:37-0500\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -16,9 +16,9 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=4; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n"
-"%10<=4 && (n%100<12 || n%100>14) ? 1 : n%10==0 || (n%10>=5 && n%10<=9) || (n"
-"%100>=11 && n%100<=14)? 2 : 3);\n"
+"Plural-Forms: nplurals=4; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<12 || n%100>14) ? 1 : n%10==0 || (n%10>=5 && n%10<=9) || "
+"(n%100>=11 && n%100<=14)? 2 : 3);\n"
 
 #: billing/apps.py:8
 msgid "Billing"
@@ -80,18 +80,6 @@ msgstr "Количество позиций"
 msgid "Discount Value, %"
 msgstr "Скидка, %"
 
-#: billing/models.py:26
-msgid "Refunding Request Datetime"
-msgstr "Дата-время запроса на возврат"
-
-#: billing/models.py:27
-msgid "Refund Datetime"
-msgstr "Дата-время возврата"
-
-#: billing/models.py:28
-msgid "Refund Amount"
-msgstr "Сумма возврата"
-
 #: billing/models.py:29
 msgid "Fee"
 msgstr "Пошлина"
@@ -128,10 +116,57 @@ msgstr "ID заказа в пл.системе"
 msgid "Payment Link"
 msgstr "Платежная ссылка"
 
+#: billing/models.py:39
+msgid "First subscription order"
+msgstr "Первый заказ по подписке"
+
+#: billing/models.py:40
+msgid "Invoice Id"
+msgstr "ID чека"
+
 #: billing/models.py:41
+msgid "CRC"
+msgstr "CRC"
+
+#: billing/models.py:42
+msgid "Nomenclature"
+msgstr "Номенклатура"
+
+#: billing/models.py:45
 msgid "Order"
 msgstr "Заказ"
 
-#: billing/models.py:42
+#: billing/models.py:46
 msgid "Orders"
 msgstr "Заказы"
+
+#: billing/models.py:51
+msgid "Expense name"
+msgstr "Наименование"
+
+#: billing/models.py:52
+msgid "Date"
+msgstr "Дата"
+
+#: billing/models.py:53
+#, fuzzy
+#| msgid "Refund Amount"
+msgid "Amount"
+msgstr "Сумма к оплате"
+
+#: billing/models.py:56
+msgid "Expense"
+msgstr "Расход"
+
+#: billing/models.py:57
+msgid "Expenses"
+msgstr "Расходы"
+
+#~ msgid "Refunding Request Datetime"
+#~ msgstr "Дата-время запроса на возврат"
+
+#~ msgid "Refund Datetime"
+#~ msgstr "Дата-время возврата"
+
+#~ msgid "Refund Amount"
+#~ msgstr "Сумма возврата"
