@@ -34,12 +34,5 @@ API - http://0.0.0.0:8007/api/v1/docs
 tuna http 8008 --subdomain=payment-esu
 
 
-### TODO
-- [X] Перенести апи в контейнер
-- [X] Колбэкурл
-- [ ] Фискализация
-- [X] Скрипт публикации в DockerHub
-- [X] В ответе по созданию заказа если он уже есть возвращать снова тело заказа
-
 # Урл успешный
 https://xn----ctbefqt5agebvc.xn--p1ai/?OutSum=500.00&InvId=6&Shp_operation_id=5719897e-126b-4a51-b9a7-fb037c515ae0&Shp_user_payment_id=294ff5c0-de82-4a77-800a-6c72af4dcba0&SignatureValue=28db82b7f59030b6676fa1a4abb1e905&IsTest=1&Culture=ru
