@@ -38,3 +38,12 @@ class CreateOrderRequest(BaseModel):
     user_id: str
     user_email: Optional[str] = None
     idempotent_key: str
+
+
+class CreateFreeOrderRequest(BaseModel):
+    amount: condecimal(max_digits=11, decimal_places=2)
+    user_id: str
+    user_email: Optional[str] = None
+    idempotent_key: str
+    description: Optional[str] = None
+    currency: Optional[str] = "RUB"

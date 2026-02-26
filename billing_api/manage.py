@@ -1,7 +1,13 @@
 import logging.config
 import os
+
+os.environ.setdefault("TZ", "Europe/Moscow")
+try:
+    import time
+    time.tzset()
+except AttributeError:
+    pass  # Windows не поддерживает tzset
 import typer
-import time
 import uvicorn
 
 from app.settings import settings

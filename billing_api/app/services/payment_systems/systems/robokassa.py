@@ -1,19 +1,15 @@
 import decimal
 import hashlib
 import json
-from urllib import parse
-from typing import Any, Dict, Optional, Tuple, List
-import random
-from decimal import Decimal
 from datetime import datetime
+from decimal import Decimal
+from typing import List, Optional, Tuple
+from urllib import parse
+
+from app.services.payment_systems.main_interface import PaymentSystemInterface
 
 # from django.conf import settings
 # from rest_framework.request import Request
-
-# from billing.models import UserPayment
-# from billing.payment_systems.main_interface import PaymentSystemInterface
-from app.services.payment_systems.main_interface import PaymentSystemInterface
-from app.services.operations_service import OperationsService
 
 
 ROBOKASSA_SNO_MAP = {
@@ -40,10 +36,10 @@ ROBOKASSA_TAX_MAP = {
 
 class RobokassaPaymentSystemService(PaymentSystemInterface):
     def __init__(self):
-        self.ROBOKASSA_PASSWORD_1 = None, # settings.ROBOKASSA_PASSWORD_1
-        self.ROBOKASSA_PASSWORD_2 = None, # settings.ROBOKASSA_PASSWORD_2
-        self.ROBOKASSA_LOGIN = None, # settings.ROBOKASSA_LOGIN
-        self.ROBOKASSA_TEST = None, # settings.ROBOKASSA_TEST
+        self.ROBOKASSA_PASSWORD_1 = None,  # settings.ROBOKASSA_PASSWORD_1
+        self.ROBOKASSA_PASSWORD_2 = None,  # settings.ROBOKASSA_PASSWORD_2
+        self.ROBOKASSA_LOGIN = None,  # settings.ROBOKASSA_LOGIN
+        self.ROBOKASSA_TEST = None,  # settings.ROBOKASSA_TEST
         self.robokassa_payment_url = 'https://auth.robokassa.ru/Merchant/Index.aspx'
 
     def _parse_response(self, request: str) -> dict:
@@ -80,13 +76,13 @@ class RobokassaPaymentSystemService(PaymentSystemInterface):
         signature = self._calculate_signature(*signature_args)
 
         return signature.lower() == received_signature.lower()
-    
 
     def create_link(self, final_amount, user_email, description, payment_id, operation_id=0, is_subscription=False, nomenclature=None) -> str:
         signature_args = [self.ROBOKASSA_LOGIN, final_amount, ""]
         if nomenclature:
             signature_args.append(json.dumps(nomenclature))
-        signature_args += [self.ROBOKASSA_PASSWORD_1, f"Shp_operation_id={operation_id}", f"Shp_user_payment_id={payment_id}"]
+        signature_args += [self.ROBOKASSA_PASSWORD_1,
+                           f"Shp_operation_id={operation_id}", f"Shp_user_payment_id={payment_id}"]
         signature = self._calculate_signature(*signature_args)
         self.ROBOKASSA_TEST = 1 if str(self.ROBOKASSA_TEST) == "1" else 0
 
@@ -121,14 +117,14 @@ class RobokassaPaymentSystemService(PaymentSystemInterface):
             self.ROBOKASSA_PASSWORD_2,
             Shp_operation_id=payload["operation_id"],
             Shp_user_payment_id=payload["addtional_fields"]["Shp_user_payment_id"],
-              # Дополнительный параметр
+            # Дополнительный параметр
         )
 
         if not is_valid_signature:
             return "The signatures don't match"
 
         return None
-    
+
     def prepare_payload(self, payload):
         param_request = self._parse_response(payload)
         return {
@@ -136,7 +132,7 @@ class RobokassaPaymentSystemService(PaymentSystemInterface):
             "status": 3,
             "fee": float(param_request.get('Fee')) if param_request.get('Fee') else 0,
             "invoice_id": param_request['InvId'],
-            "receipt_link":"",
+            "receipt_link": "",
             "crc": param_request['crc'],
             "operation_id": param_request['Shp_operation_id'],
             "addtional_fields": {
@@ -145,7 +141,7 @@ class RobokassaPaymentSystemService(PaymentSystemInterface):
                 "Shp_user_payment_id": param_request["Shp_user_payment_id"]
             }
         }
-    
+
     def get_nomenclature(self, base_sno, base_nds, base_items: List[dict]) -> Tuple[Optional[dict], Optional[str]]:
         """Get nomenclature"""
         sno = ROBOKASSA_SNO_MAP.get(base_sno)

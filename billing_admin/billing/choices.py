@@ -8,3 +8,5 @@ class StatusChoices(IntegerChoices):
     IS_REFUNDING = 4, _("Is refunding")
     REFUNED = 5, _("Refuned")
     EXPIRED = 6, _("Expired")
+    ERROR = 7, _("Error")
+    UNKNOWN = 8, _("Unknown")

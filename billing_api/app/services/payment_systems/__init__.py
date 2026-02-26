@@ -1,5 +1,6 @@
 from .systems.robokassa import RobokassaPaymentSystemService
 from .systems.dummy_payment_system import DummyPaymentSystemService
+from .systems.paygine import PayginePaymentSystemService
 
 
 

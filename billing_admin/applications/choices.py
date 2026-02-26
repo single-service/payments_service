@@ -5,6 +5,7 @@ class PaymentSystemsChoices(IntegerChoices):
     DUMMY = 1, 'Dummy'
     ROBOKASSA = 2, 'ROBOKASSA'
     YKASSA = 3, 'YKASSA'
+    PAYGINE = 4, 'PAYGINE'
 
 
 class SnoChoices(IntegerChoices):
@@ -32,4 +33,5 @@ PAYMENT_SYSTEM_PARAMETERS_MAP = {
     PaymentSystemsChoices.DUMMY: ["HOST"],
     PaymentSystemsChoices.ROBOKASSA: ["ROBOKASSA_LOGIN", "ROBOKASSA_PASSWORD_1", "ROBOKASSA_PASSWORD_2", "ROBOKASSA_TEST", ],
     PaymentSystemsChoices.YKASSA: [],
+    PaymentSystemsChoices.PAYGINE: ["PAYGINE_SECTOR", "PAYGINE_SIGN_PASSWORD", "PAYGINE_BASE_URL"],
 }

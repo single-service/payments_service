@@ -1,21 +1,19 @@
-import string
 import hashlib
-import secrets
 import random
+import secrets
+import string
 
 from django.contrib import admin, messages
-from django.contrib.auth.models import User, Group
-from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.admin import GroupAdmin as BaseGroupAdmin
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.contrib.auth.models import Group, User
 from django.utils.html import format_html
 from django.utils.translation import gettext as _
-
-from unfold.admin import ModelAdmin
+from unfold.admin import ModelAdmin, TabularInline
 from unfold.decorators import action
 
-from .models import Application, ApplicationToken, PaymentSystemParamter
 from .choices import PAYMENT_SYSTEM_PARAMETERS_MAP
-
+from .models import Application, ApplicationToken, PaymentSystemParamter
 
 admin.site.unregister(User)
 admin.site.unregister(Group)
@@ -31,7 +29,7 @@ class GroupAdmin(BaseGroupAdmin, ModelAdmin):
     pass
 
 
-class PaymentSystemParamterInline(admin.TabularInline):
+class PaymentSystemParamterInline(TabularInline):
     model = PaymentSystemParamter
 
 
@@ -63,7 +61,8 @@ class ApplicationAdmin(ModelAdmin):
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
         PaymentSystemParamter.objects.filter(application_id=obj.id).exclude(payment_system=obj.payment_system).delete()
-        existed_parameters = PaymentSystemParamter.objects.filter(application_id=obj.id, payment_system=obj.payment_system)
+        existed_parameters = PaymentSystemParamter.objects.filter(
+            application_id=obj.id, payment_system=obj.payment_system)
         existed_parameters_names = set([x.name for x in existed_parameters])
         parameters = set(PAYMENT_SYSTEM_PARAMETERS_MAP.get(obj.payment_system))
         if not parameters:

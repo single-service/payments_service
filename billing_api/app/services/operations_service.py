@@ -1,17 +1,11 @@
-from datetime import datetime, timedelta
 from decimal import Decimal
-import hashlib
-import uuid
-
-from fastapi import Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import insert, select, func, desc, update
-from sqlalchemy.orm import selectinload
-import jwt
 
 from app.database_connector import get_async_session
-from app.models import Order, Application, PaymentItem, PaymentItemDiscount, PaymentSystemParamter
-from app.settings import settings
+from app.models import (Application, Order, PaymentItem, PaymentItemDiscount,
+                        PaymentSystemParamter)
+from fastapi import Depends
+from sqlalchemy import desc, func, insert, select, update
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class OperationsService:
@@ -24,7 +18,7 @@ class OperationsService:
         query = select(Order).filter_by(application_id=application_id)
         if status:
             query = query.filter(status=status)
-        if status:
+        if user_id:
             query = query.filter(user_id=user_id)
         # Пагинация
         query = query.offset((page - 1) * limit).limit(limit)
@@ -68,7 +62,7 @@ class OperationsService:
             .order_by(desc(PaymentItemDiscount.items_count))  # Сортировка по убыванию
             .limit(1)  # Берем только первую запись
         )
-        
+
         # Выполнение запроса
         result = await self.session.execute(query)
         discount_instance = result.scalars().first()  # Получаем первый объект или None
@@ -88,31 +82,31 @@ class OperationsService:
         return {p.name: p.parameter_value for p in params}
 
     async def create_order(self,
-        id:str,
-        created_dt,
-        updated_dt,
-        application_id,
-        payment_item_id,
-        payment_system,
-        status,
-        name,
-        price,
-        final_price,
-        currency,
-        is_subscription,
-        items_count,
-        discount_value,
-        user_id,
-        user_email,
-        idempotent_key,
-        amount,
-        discount_amount,
-        payment_system_order_id,
-        payment_link,
-        invoice_id,
-        is_subscription_first_order,
-        nomenclature=None,
-    ):
+                           id: str,
+                           created_dt,
+                           updated_dt,
+                           application_id,
+                           payment_item_id,
+                           payment_system,
+                           status,
+                           name,
+                           price,
+                           final_price,
+                           currency,
+                           is_subscription,
+                           items_count,
+                           discount_value,
+                           user_id,
+                           user_email,
+                           idempotent_key,
+                           amount,
+                           discount_amount,
+                           payment_system_order_id,
+                           payment_link,
+                           invoice_id,
+                           is_subscription_first_order,
+                           nomenclature=None,
+                           ):
         new_order = dict(
             id=id,
             created_dt=created_dt,
@@ -146,11 +140,11 @@ class OperationsService:
             print(f"Create user Exception: {e}")
             return False
         return True
-    
+
     async def update_order(self, id: str, **kwargs):
         """
         Обновляет заказ в базе данных.
-        
+
         :param id: Идентификатор заказа
         :param kwargs: Ключи и значения полей, которые нужно обновить
         :return: Возвращает True, если обновление прошло успешно, иначе False
@@ -162,7 +156,7 @@ class OperationsService:
                 .where(Order.id == id)
                 .values(kwargs)
             )
-            
+
             # Выполнение обновления
             await self.session.execute(stmt)
             await self.session.commit()
