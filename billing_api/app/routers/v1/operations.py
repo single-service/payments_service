@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Annotated
 
 import aiohttp
-from app.enums import PAYMENT_SYSTEM_SERVICES_MAP, OrderStatusChoices
+from app.enums import OFD_INTERFACE_SERVICE_MAP, PAYMENT_SYSTEM_SERVICES_MAP, OrderStatusChoices
 from app.schemas.billing import (CreateFreeOrderRequest, CreateOrderRequest,
                                  OrdersSchema, RefundRequest)
 from app.services.operations_service import OperationsService
@@ -11,6 +11,7 @@ from app.utils.auth import TokenAuth
 from app.validators.order import validate_create_order
 from fastapi import (APIRouter, BackgroundTasks, Depends, HTTPException, Path,
                      Query, Request)
+from app.services.fiscal_services import AtolService
 
 router = APIRouter()
 
@@ -191,6 +192,11 @@ async def create_free_order(
         return operation_exist
 
     application = await operations_service.get_application(application_id)
+    if application.is_fiscalisation and (not create_body.user_email or not create_body.nomenclature):
+        raise HTTPException(
+            status_code=422, 
+            detail="When fiscalizing, you must fill in the user's email address and product code."
+        )
     payment_service_cls = PAYMENT_SYSTEM_SERVICES_MAP.get(application.payment_system)
     if not payment_service_cls:
         raise HTTPException(status_code=400, detail="This payment system is not ready")
@@ -232,7 +238,7 @@ async def create_free_order(
         payment_system_order_id=None,
         payment_link=link,
         is_subscription_first_order=None,
-        nomenclature=None,
+        nomenclature=[item.model_dump() for item in create_body.nomenclature],
     )
     create_status = await operations_service.create_order(**payload)
     if not create_status:
@@ -290,6 +296,16 @@ async def payment_callback(
             status_code=400,
             detail="Wrong operation"
         )
+    application = await operations_service.get_application(operation.application_id)
+    ofd_interface_parametrs = await operations_service.get_ofd_interface_parametres(operation.application_id)
+    if application.is_fiscalisation:
+        ofd_service = OFD_INTERFACE_SERVICE_MAP.get(application.ofd_interface)
+        await ofd_service().create_sell_check(
+            application, 
+            operation, 
+            ofd_interface_parametrs, 
+            operations_service
+        )
     payment_system_parametres = await operations_service.get_payment_system_parametres(operation.application_id)
     print('payment_system_parametres', payment_system_parametres)
     payment_service.set_system_parameters(**payment_system_parametres)
@@ -327,3 +343,15 @@ async def payment_callback(
     if application.callback_url:
         background_tasks.add_task(perform_callback, application.callback_url, payload)
     return {"detail": "OK"}
+
+
+@router.post("/callback-atol/")
+async def callback_atol(request: Request, operations_service=Depends(OperationsService)):
+    print("ATOL")
+    try:
+        payload = await request.json()
+        atol_service = AtolService()
+        await atol_service.check_callback_data(payload, operations_service)
+    except Exception as exc:
+        print(f"Ошибка обработки коллбека от ATOL: {type(exc)} - {exc}")
+        raise HTTPException(status_code=400, detail="Invalid data")

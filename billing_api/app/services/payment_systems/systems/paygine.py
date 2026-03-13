@@ -77,7 +77,7 @@ class PayginePaymentSystemService(PaymentSystemInterface):
         order_id = self._register_order(
             amount=amount_kopecks,
             currency=currency,
-            description=description or "",
+            description=description,
             reference=reference,
         )
         if not order_id:

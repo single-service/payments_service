@@ -1,4 +1,5 @@
 import asyncio
+from contextlib import asynccontextmanager
 import logging.config
 
 import json_logging
@@ -9,6 +10,7 @@ from fastapi.exceptions import HTTPException
 from pydantic import ValidationError
 from starlette.middleware.cors import CORSMiddleware
 
+from app import redis_manager
 from .routers.v1 import base
 from .settings import settings
 from .settings.json import CustomJSONLog, CustomRequestJSONLog
@@ -31,9 +33,17 @@ if not settings.SHOW_DOCS:
         "openapi_url": None,
         "redoc_url": None,
     }
+    
+    
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await redis_manager.connect()
+    print("Redis подключен")
+    yield
+    await redis_manager.close()
 
 
-app = FastAPI(**app_settings)
+app = FastAPI(lifespan=lifespan, **app_settings)
 timezone = pytz.timezone("Europe/Moscow")
 json_logging.init_request_instrument(app=app, custom_formatter=CustomRequestJSONLog)
 

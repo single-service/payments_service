@@ -38,6 +38,8 @@ class CommonConfig:
 
     # Cache
     REDIS_CONNECTION_URL = os.getenv("REDIS_URL")
+    REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+    REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
     CACHE_PREFIX = "prediction_service"
 
     # HTTP

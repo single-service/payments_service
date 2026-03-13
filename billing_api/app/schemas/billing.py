@@ -1,7 +1,9 @@
 from datetime import datetime
 from typing import Optional, List
 
-from pydantic import BaseModel, condecimal
+from pydantic import BaseModel, Field, condecimal, confloat, conint
+
+from app.enums import PaymentMethodEnum, VatTypeEnum, MeasureEnum, PaymentTypeEnum
 
 
 class OrderSchema(BaseModel):
@@ -38,6 +40,43 @@ class CreateOrderRequest(BaseModel):
     user_id: str
     user_email: Optional[str] = None
     idempotent_key: str
+    
+    
+class NomenclatureModel(BaseModel):
+    amount: Optional[int] = Field(
+        None, ge=1, le=100000000, description="Общая стоимость товара в товарной позиции"
+    )
+    count: float = Field(..., gt=0, description="Количество")
+    price: int = Field(
+        ..., ge=1, le=100000000, description="Цена в копейках (за 1 единицу)"
+    )
+    name: str = Field(
+        ..., max_length=100, description="Наименование"
+    )
+    nds: VatTypeEnum = Field(..., description="Ставка НДС")
+    payment_method: PaymentMethodEnum = Field(
+        ..., description="Признак способа расчета"
+    )
+    measure: Optional[MeasureEnum] = Field(
+        None, description="Единица измерения количества предмета"
+    )
+    payment_type: Optional[PaymentTypeEnum] = Field(
+        None, description="Признак предмета расчета"
+    )
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "amount": 15000,
+                "count": 2.0,
+                "price": 7500,
+                "name": "Товар А",
+                "nds": "vat20",
+                "payment_method": "full_payment",
+                "measure": 22,
+                "payment_type": 1,
+            }
+        }
 
 
 class CreateFreeOrderRequest(BaseModel):
@@ -45,5 +84,6 @@ class CreateFreeOrderRequest(BaseModel):
     user_id: str
     user_email: Optional[str] = None
     idempotent_key: str
-    description: Optional[str] = None
+    description: str
     currency: Optional[str] = "RUB"
+    nomenclature: list[NomenclatureModel] = []
