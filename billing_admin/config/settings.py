@@ -35,7 +35,8 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:8009",
     "http://localhost:81",
     "http://127.0.0.1:8009",
-    "http://127.0.0.1:81"
+    "http://127.0.0.1:81",
+    # "http://127.0.0.1:8008",
 ]
 SITE_HOST = os.environ.get("SITE_HOST")
 if SITE_HOST:
@@ -64,6 +65,7 @@ INSTALLED_APPS = [
     'applications',
     'payments',
     'billing',
+    'fiscal_documents'
 ]
 
 MIDDLEWARE = [

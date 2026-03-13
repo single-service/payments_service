@@ -3,8 +3,7 @@ import uuid
 from django.db import models
 from django.utils.translation import gettext as _
 
-from .choices import PaymentSystemsChoices, SnoChoices, TaxChoices
-
+from .choices import OFDInterfaceChoices, PaymentSystemsChoices, SnoChoices, TaxChoices
 
 
 class AbstractBaseModel(models.Model):
@@ -33,6 +32,15 @@ class Application(AbstractBaseModel):
         choices=TaxChoices.choices,
         null=True,
         default=TaxChoices.NO_NDS
+    )
+    email = models.EmailField(_("Электронная почта организации"), blank=True)
+    inn = models.CharField(_("ИНН организации"), blank=True, max_length=12)
+    payment_address = models.CharField(_("Место расчетов"), blank=True, max_length=255)
+    ofd_interface = models.IntegerField(
+        _("OFD interface"), 
+        choices=OFDInterfaceChoices.choices, 
+        blank=True,
+        null=True
     )
 
     class Meta:
@@ -72,6 +80,23 @@ class PaymentSystemParamter(AbstractBaseModel):
     class Meta:
         verbose_name = _("Payment System Paramter")
         verbose_name_plural = _("Payment System Paramtres")
+
+    def __str__(self):
+        return self.name
+
+
+class OFDInterfaceParamter(AbstractBaseModel):
+    # Relations
+    application = models.ForeignKey("applications.Application", on_delete=models.CASCADE)
+
+    # Fields
+    name = models.CharField(_("Name"), max_length=200)
+    parameter_value = models.CharField(_("Parameter Value"), max_length=200, null=True, blank=True)
+    ofd_interface = models.IntegerField(_("OFD Interface"), choices=OFDInterfaceChoices.choices)
+
+    class Meta:
+        verbose_name = _("OFD Interface Paramter")
+        verbose_name_plural = _("OFD Interface Paramter")
 
     def __str__(self):
         return self.name
