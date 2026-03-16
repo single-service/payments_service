@@ -4,6 +4,7 @@ volumes:
   db_volume:
   admin_static_volume:
   admin_media_volume:
+  local_redis_data:
 
 services:
   db:
@@ -29,3 +30,20 @@ services:
     env_file:
       - .envs/.admin
     restart: on-failure
+
+  redis:
+    image: redis:6.0.1-alpine
+    env_file:
+      - .envs/.admin
+    ports:
+      - '6379:6379'
+    volumes:
+      - local_redis_data:/data
+    command: >
+      --maxclients 20000 --timeout 300 --appendonly yes --replica-read-only no
+    healthcheck:
+      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: always

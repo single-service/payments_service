@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from app.database_connector import get_async_session
 from app.models import (Application, Order, PaymentItem, PaymentItemDiscount,
-                        PaymentSystemParamter)
+                        PaymentSystemParamter, OFDInterfaceParametr, FiscalDocument)
 from fastapi import Depends
 from sqlalchemy import desc, func, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -75,11 +75,68 @@ class OperationsService:
             amount -= discount_amount
         return final_price, amount, discount_value, discount_amount
 
+    async def get_ofd_interface_parametres(self, application_id):
+        query = select(OFDInterfaceParametr).filter_by(application_id=application_id)
+        result = await self.session.execute(query)
+        params = result.scalars().all()
+        return {p.name: p.parameter_value for p in params}
+    
     async def get_payment_system_parametres(self, application_id):
         query = select(PaymentSystemParamter).filter_by(application_id=application_id)
         result = await self.session.execute(query)
         params = result.scalars().all()
         return {p.name: p.parameter_value for p in params}
+    
+    async def create_fiscal_document(
+        self, 
+        id, 
+        order_id, 
+        document_type, 
+        data,
+        created_dt,
+        updated_dt
+    ):
+        new_fiscal_document = dict(
+            id=id,
+            order_id=order_id,
+            document_type=document_type,
+            request_payload=data,
+            created_dt=created_dt,
+            updated_dt=updated_dt
+        )
+        try:
+            result = await self.session.execute(
+                insert(FiscalDocument)
+                .values(**new_fiscal_document)
+                .returning(FiscalDocument.id)
+            )
+            new_id = result.scalar()
+            await self.session.commit()
+            return new_id
+        except Exception as e:
+            print(f"Create fiscal document Exception: {e}")
+            return None
+        
+    async def update_fiscal_document(self, id: str, **kwargs):
+        """
+        Обновляет фискальный документ в базе данных.
+
+        :param id: Идентификатор фискального документа
+        :param kwargs: Ключи и значения полей, которые нужно обновить
+        :return: Возвращает True, если обновление прошло успешно, иначе False
+        """
+        try:
+            stmt = (
+                update(FiscalDocument)
+                .where(FiscalDocument.id == id)
+                .values(kwargs)
+            )
+            await self.session.execute(stmt)
+            await self.session.commit()
+        except Exception as e:
+            print(f"Update fiscal document exception: {e}")
+            return False
+        return True
 
     async def create_order(self,
                            id: str,

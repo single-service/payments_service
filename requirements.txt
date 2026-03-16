@@ -35,3 +35,4 @@ python-multipart==0.0.6
 sqlalchemy==2.0.23
 aioredis==2.0.1
 pytz==2024.2
+udp-mongo-logger==1.0.2

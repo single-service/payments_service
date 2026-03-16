@@ -7,13 +7,13 @@ from django.contrib import admin, messages
 from django.contrib.auth.admin import GroupAdmin as BaseGroupAdmin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import Group, User
-from django.utils.html import format_html
 from django.utils.translation import gettext as _
 from unfold.admin import ModelAdmin, TabularInline
-from unfold.decorators import action
 
-from .choices import PAYMENT_SYSTEM_PARAMETERS_MAP
-from .models import Application, ApplicationToken, PaymentSystemParamter
+from .choices import (OFD_INTERFACE_PARAMETERS_MAP,
+                      PAYMENT_SYSTEM_PARAMETERS_MAP)
+from .models import (Application, ApplicationToken, OFDInterfaceParamter,
+                     PaymentSystemParamter)
 
 admin.site.unregister(User)
 admin.site.unregister(Group)
@@ -31,12 +31,18 @@ class GroupAdmin(BaseGroupAdmin, ModelAdmin):
 
 class PaymentSystemParamterInline(TabularInline):
     model = PaymentSystemParamter
+    extra = 0
+
+
+class OFDInterfaceParamterInline(TabularInline):
+    model = OFDInterfaceParamter
+    extra = 0
 
 
 @admin.register(Application)
 class ApplicationAdmin(ModelAdmin):
     actions = ['create_token']
-    inlines = [PaymentSystemParamterInline]
+    inlines = [PaymentSystemParamterInline, OFDInterfaceParamterInline]
 
     @admin.action(description=_('Create token'))
     def create_token(modeladmin, request, queryset):
@@ -60,24 +66,45 @@ class ApplicationAdmin(ModelAdmin):
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
-        PaymentSystemParamter.objects.filter(application_id=obj.id).exclude(payment_system=obj.payment_system).delete()
-        existed_parameters = PaymentSystemParamter.objects.filter(
-            application_id=obj.id, payment_system=obj.payment_system)
+        self.__sync_parameters(
+            PaymentSystemParamter,
+            obj,
+            "payment_system",
+            obj.payment_system,
+            PAYMENT_SYSTEM_PARAMETERS_MAP
+        )
+
+        self.__sync_parameters(
+            OFDInterfaceParamter,
+            obj,
+            "ofd_interface",
+            obj.ofd_interface,
+            OFD_INTERFACE_PARAMETERS_MAP
+        )
+
+    def __sync_parameters(self, model, obj, field_name, field_value, parametrs_map):
+        filter_kwargs = {
+            field_name: field_value,
+        }
+        print(filter_kwargs)
+        model.objects.filter(application_id=obj.id).exclude(**filter_kwargs).delete()
+        existed_parameters = model.objects.filter(
+            application_id=obj.id, **filter_kwargs)
         existed_parameters_names = set([x.name for x in existed_parameters])
-        parameters = set(PAYMENT_SYSTEM_PARAMETERS_MAP.get(obj.payment_system))
+        parameters = set(parametrs_map.get(field_value))
         if not parameters:
             return
         # Remove not existed parameteres in map
         params2delete = [name for name in existed_parameters_names if name not in parameters]
         if params2delete:
-            PaymentSystemParamter.objects.filter(application_id=obj.id, name__in=params2delete).delete()
+            model.objects.filter(application_id=obj.id, name__in=params2delete).delete()
         for param in parameters:
             if param in existed_parameters_names:
                 continue
-            PaymentSystemParamter.objects.create(
+            model.objects.create(
                 application_id=obj.id,
-                payment_system=obj.payment_system,
                 name=param,
+                **filter_kwargs
             )
 
 

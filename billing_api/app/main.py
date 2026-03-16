@@ -1,4 +1,5 @@
 import asyncio
+from contextlib import asynccontextmanager
 import logging.config
 
 import json_logging
@@ -9,14 +10,15 @@ from fastapi.exceptions import HTTPException
 from pydantic import ValidationError
 from starlette.middleware.cors import CORSMiddleware
 
+from app import redis_manager
 from .routers.v1 import base
 from .settings import settings
 from .settings.json import CustomJSONLog, CustomRequestJSONLog
-
+from .logger import setup_logging, get_logger
 
 json_logging.CREATE_CORRELATION_ID_IF_NOT_EXISTS = False
 logging.config.dictConfig(settings.LOGGING)
-logger = logging.getLogger("info")
+logger = get_logger()
 json_logging.init_fastapi(enable_json=True, custom_formatter=CustomJSONLog)
 
 app_settings = {
@@ -31,9 +33,18 @@ if not settings.SHOW_DOCS:
         "openapi_url": None,
         "redoc_url": None,
     }
+    
+    
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    setup_logging()  # инициализируем UDP handler после форка воркера
+    await redis_manager.connect()
+    logger.info("Redis connected")
+    yield
+    await redis_manager.close()
 
 
-app = FastAPI(**app_settings)
+app = FastAPI(lifespan=lifespan, **app_settings)
 timezone = pytz.timezone("Europe/Moscow")
 json_logging.init_request_instrument(app=app, custom_formatter=CustomRequestJSONLog)
 
@@ -47,8 +58,7 @@ async def startup_event():
 
 @app.exception_handler(ValidationError)
 async def validation_exception_handler(request, exc):
-    logger.error(str(exc))
-    print(f"Validation error: {str(exc)}")  # noqa: T201
+    logger.error(f"Validation error: {str(exc)}")
     raise HTTPException(status_code=500, detail="Server error")
 
 
