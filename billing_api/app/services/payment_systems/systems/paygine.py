@@ -129,7 +129,8 @@ class PayginePaymentSystemService(PaymentSystemInterface):
             </operation>
         """
         from app.enums import OrderStatusChoices
-
+        print(f"payload type: {type(payload)}")
+        print(f"payload: {payload}")
         root = ET.fromstring(payload)
         data = {child.tag: (child.text or "").strip() for child in root}
 

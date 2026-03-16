@@ -55,6 +55,8 @@ class CommonConfig:
     YS_DATASET_DIR = os.getenv("YS_DATASET_DIR", "uploaded_datasets")
     YS_MODELS_DIR = os.getenv("YS_MODELS_DIR", "models")
     YS_PRESIGNED_LINK_EXPIRATION = os.getenv("YS_PRESIGNED_LINK_EXPIRATION", 3600)
+    
+    ATOL_BASE_URL = os.getenv("ATOL_BASE_URL", "https://testonline.atol.ru/possystem/v4")
 
     # Logging
     DIR_LOGS = "/app/shared/logs"

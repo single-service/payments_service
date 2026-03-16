@@ -104,10 +104,16 @@ class AtolService(BaseOFD):
     async def check_callback_data(self, data: dict, operations_service):
         external_id = data["external_id"]
         status = data["status"]
-        ofd_receipt_url = data["payload"]["ofd_receipt_url"]
+        payload = data["payload"]
+        if payload:
+            ofd_receipt_url = payload["ofd_receipt_url"]
+        else:
+            ofd_receipt_url = None
+        error = data["error"]
         await operations_service.update_fiscal_document(
             external_id,
             status=status,
             ofd_document_url=ofd_receipt_url,
+            error=error,
             updated_dt=datetime.now(),
         )    
