@@ -1,12 +1,13 @@
 import aiohttp
 
 from app import redis_manager
+from app.settings.common import CommonConfig
 
 
 class Atol:
 
     # BASE_URL = "https://online.atol.ru/possystem/v4"
-    BASE_URL = "https://testonline.atol.ru/possystem/v4"
+    # BASE_URL = "https://testonline.atol.ru/possystem/v4"
 
     def __init__(self, login, password, group_code):
         self.login = login
@@ -23,7 +24,7 @@ class Atol:
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.post(
-                    f"{self.BASE_URL}/getToken",
+                    f"{CommonConfig.ATOL_BASE_URL}/getToken",
                     headers={
                         "Content-Type": "application/json; charset=utf-8"
                     },
@@ -52,7 +53,7 @@ class Atol:
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.post(
-                    f"{self.BASE_URL}/{self.group_code}/{operation_type}",
+                    f"{CommonConfig.ATOL_BASE_URL}/{self.group_code}/{operation_type}",
                     headers={
                         "Content-Type": "application/json; charset=utf-8",
                         "Token": token

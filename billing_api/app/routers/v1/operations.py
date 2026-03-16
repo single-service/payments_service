@@ -347,10 +347,11 @@ async def payment_callback(
     logger.info(f"payment_callback: operation found operation_id={operation.id} status={operation.status}")
     application = await operations_service.get_application(operation.application_id)
     ofd_interface_parametrs = await operations_service.get_ofd_interface_parametres(operation.application_id)
-    if application.is_fiscalisation:
+    if application.is_fiscalisation and data.get("status") == OrderStatusChoices.PAID:
         logger.info(f"payment_callback: sending fiscal check operation_id={operation.id} ofd_interface={application.ofd_interface}")
         ofd_service = OFD_INTERFACE_SERVICE_MAP.get(application.ofd_interface)
-        await ofd_service().create_sell_check(
+        background_tasks.add_task(
+            ofd_service().create_sell_check,
             application,
             operation,
             ofd_interface_parametrs,
