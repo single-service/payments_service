@@ -12,7 +12,9 @@ from app.validators.order import validate_create_order
 from fastapi import (APIRouter, BackgroundTasks, Depends, HTTPException, Path,
                      Query, Request)
 from app.services.fiscal_services import AtolService
+from app.logger import get_logger
 
+logger = get_logger()
 router = APIRouter()
 
 
@@ -88,6 +90,7 @@ async def create_order(
     application_id=Depends(TokenAuth),
     operations_service=Depends(OperationsService),
 ):
+    logger.info(f"create_order: application_id={application_id} payment_item_id={create_body.payment_item_id} idempotent_key={create_body.idempotent_key}")
     # Валидация
     validated_data, error = await validate_create_order(
         application_id=application_id,
@@ -99,8 +102,10 @@ async def create_order(
     if error:
         if error == "Operation created yet":
             operation = validated_data["operation"]
+            logger.info(f"create_order: idempotent hit, returning existing operation={operation.id}")
             return operation
         else:
+            logger.warning(f"create_order: validation error={error} application_id={application_id}")
             raise HTTPException(
                 status_code=400,
                 detail=error
@@ -118,6 +123,7 @@ async def create_order(
     is_subscription_first_order = True if payment_item.is_subscription else None
     nomenclature = None
     if application.is_fiscalisation:
+        logger.info(f"create_order: fiscalisation enabled for application_id={application_id} operation_id={operation_id}")
         base_items = [
             {
                 "name": payment_item.name,
@@ -141,6 +147,7 @@ async def create_order(
         is_subscription=payment_item.is_subscription,
         nomenclature=nomenclature
     )
+    logger.info(f"create_order: payment link created operation_id={operation_id} amount={amount}")
     # Добавляем операцию
     payload = dict(
         id=operation_id,
@@ -170,35 +177,72 @@ async def create_order(
     )
     create_status = await operations_service.create_order(**payload)
     if not create_status:
+        logger.error(f"create_order: failed to save operation_id={operation_id} application_id={application_id}")
         raise HTTPException(
             status_code=400,
             detail="Order create failed"
         )
+    logger.info(f"create_order: success operation_id={operation_id} amount={amount} user_id={create_body.user_id}")
     return payload
 
 
-@router.post("/operations/free/")
+@router.post(
+    "/operations/free/",
+    summary="Создание произвольного заказа",
+    description="""
+Создаёт заказ с произвольной суммой (без привязки к payment_item).
+
+**Все суммы указываются в копейках:**
+- `10000` = 100₽
+- `15050` = 150₽ 50коп
+
+**Обязательные поля:** `amount`, `user_id`, `idempotent_key`, `description`
+
+**При включённой фискализации** дополнительно обязательны: `user_email`, `nomenclature` (минимум одна позиция)
+
+**Идемпотентность:** повторный запрос с тем же `idempotent_key` вернёт существующий заказ без создания нового.
+
+---
+
+**Поля номенклатуры (`nomenclature[]`):**
+
+| Поле | Обяз. | Описание |
+|------|-------|----------|
+| `name` | ✅ | Наименование товара/услуги (макс. 100 символов) |
+| `price` | ✅ | Цена за 1 единицу в копейках |
+| `count` | ✅ | Количество |
+| `nds` | ✅ | Ставка НДС: `none`, `vat0`, `vat5`, `vat7`, `vat10`, `vat20`, `vat22`, `vat105`, `vat107`, `vat110`, `vat120`, `vat122` |
+| `payment_method` | ✅ | Способ расчёта: `full_prepayment`, `prepayment`, `advance`, `full_payment`, `partial_payment`, `credit`, `credit_payment` |
+| `amount` | ❌ | Общая стоимость позиции в копейках (если не указано — `price * count`) |
+| `measure` | ❌ | Единица измерения (код): `0`-без, `11`-кг, `22`-м, `41`-л, `71`-час, `255`-иное |
+| `payment_type` | ❌ | Предмет расчёта: `commodity`, `job`, `service`, `payment` |
+""",
+)
 async def create_free_order(
     create_body: CreateFreeOrderRequest,
     application_id=Depends(TokenAuth),
     operations_service=Depends(OperationsService),
 ):
+    logger.info(f"create_free_order: application_id={application_id} data={create_body}")
     # Идемпотентность
     operation_exist = await operations_service.check_operation_created(
         application_id=application_id,
         idempotent_key=create_body.idempotent_key,
     )
     if operation_exist:
+        logger.info(f"create_free_order: idempotent hit, returning existing operation={operation_exist.id}")
         return operation_exist
 
     application = await operations_service.get_application(application_id)
     if application.is_fiscalisation and (not create_body.user_email or not create_body.nomenclature):
+        logger.warning(f"create_free_order: fiscalisation enabled but email/nomenclature missing application_id={application_id}")
         raise HTTPException(
-            status_code=422, 
+            status_code=422,
             detail="When fiscalizing, you must fill in the user's email address and product code."
         )
     payment_service_cls = PAYMENT_SYSTEM_SERVICES_MAP.get(application.payment_system)
     if not payment_service_cls:
+        logger.error(f"create_free_order: payment system not ready payment_system={application.payment_system} application_id={application_id}")
         raise HTTPException(status_code=400, detail="This payment system is not ready")
 
     payment_system_parametres = await operations_service.get_payment_system_parametres(application_id)
@@ -206,13 +250,15 @@ async def create_free_order(
     payment_service.set_system_parameters(**payment_system_parametres)
 
     operation_id = str(uuid.uuid4())
+    amount_rubles = create_body.amount / 100
     link = payment_service.create_link(
-        final_amount=create_body.amount,
+        final_amount=amount_rubles,
         user_email=create_body.user_email,
         description=create_body.description,
         payment_id=operation_id,
         operation_id=operation_id,
     )
+    logger.info(f"create_free_order: payment link created operation_id={operation_id} body={create_body}")
 
     payload = dict(
         id=operation_id,
@@ -242,7 +288,9 @@ async def create_free_order(
     )
     create_status = await operations_service.create_order(**payload)
     if not create_status:
+        logger.error(f"create_free_order: failed to save operation_id={operation_id} application_id={application_id}")
         raise HTTPException(status_code=400, detail="Order create failed")
+    logger.info(f"create_free_order: success operation_id={operation_id} amount={create_body.amount} user_id={create_body.user_id}")
     return payload
 
 
@@ -267,51 +315,53 @@ async def payment_callback(
     :param request: объект запроса, содержащий заголовки и тело
     :param payment_method: строка, идентифицирующая используемый метод оплаты
     """
-    print("payment_method", payment_method)
+    logger.info(f"payment_callback: received payment_method={payment_method}")
     try:
         payment_service_cls = PAYMENT_SYSTEM_SERVICES_MAP.get(int(payment_method))
     except Exception as e:
+        logger.error(f"payment_callback: invalid payment_method={payment_method} error={e}")
         raise HTTPException(
             status_code=400,
             detail=f"Technical Error: {e}"
         )
     if not payment_service_cls:
+        logger.error(f"payment_callback: payment system not ready payment_method={payment_method}")
         raise HTTPException(
             status_code=400,
             detail="This payment system is not ready"
         )
-    print("payment_service_cls", payment_service_cls)
 
     # Чтение тела запроса
     body = await request.body()
     payload = body.decode()
     payment_service = payment_service_cls()
     data = payment_service.prepare_payload(payload)
-    print("payload:", payload)
-    print("Data: ", data)
+    logger.info(f"payment_callback: payload parsed operation_id={data.get('operation_id')} data={data}")
     operation = await operations_service.get_operation(data["operation_id"])
-    print("operation: ", operation)
     if not operation:
+        logger.error(f"payment_callback: operation not found operation_id={data.get('operation_id')}")
         raise HTTPException(
             status_code=400,
             detail="Wrong operation"
         )
+    logger.info(f"payment_callback: operation found operation_id={operation.id} status={operation.status}")
     application = await operations_service.get_application(operation.application_id)
     ofd_interface_parametrs = await operations_service.get_ofd_interface_parametres(operation.application_id)
     if application.is_fiscalisation:
+        logger.info(f"payment_callback: sending fiscal check operation_id={operation.id} ofd_interface={application.ofd_interface}")
         ofd_service = OFD_INTERFACE_SERVICE_MAP.get(application.ofd_interface)
         await ofd_service().create_sell_check(
-            application, 
-            operation, 
-            ofd_interface_parametrs, 
+            application,
+            operation,
+            ofd_interface_parametrs,
             operations_service
         )
+        logger.info(f"payment_callback: fiscal check sent operation_id={operation.id}")
     payment_system_parametres = await operations_service.get_payment_system_parametres(operation.application_id)
-    print('payment_system_parametres', payment_system_parametres)
     payment_service.set_system_parameters(**payment_system_parametres)
     error = payment_service.check_payment(operation, data)
-    print('error', error)
     if error:
+        logger.warning(f"payment_callback: check_payment error={error} operation_id={operation.id}")
         raise HTTPException(
             status_code=400,
             detail=error
@@ -321,12 +371,12 @@ async def payment_callback(
         "receipt_link", "crc",
     ]
     update_data = {field_name: data.get(field_name) for field_name in update_fields}
-    print('update_data', update_data)
+    logger.info(f"payment_callback: updating order operation_id={operation.id} update_data={update_data}")
     await operations_service.update_order(data['operation_id'], **update_data)
 
     status = OrderStatusChoices(operation.status)
     # Подготовка callback
-    payload = {
+    callback_payload = {
         "operation_id": operation.id,
         "invoice_id": operation.invoice_id,
         "final_price": float(operation.final_price),
@@ -338,20 +388,22 @@ async def payment_callback(
         "status": status.value,
         "status_label": status.label
     }
-    print('callback: ', payload)
     application = await operations_service.get_application(operation.application_id)
     if application.callback_url:
-        background_tasks.add_task(perform_callback, application.callback_url, payload)
+        logger.info(f"payment_callback: sending outgoing callback to {application.callback_url} operation_id={operation.id}")
+        background_tasks.add_task(perform_callback, application.callback_url, callback_payload)
     return {"detail": "OK"}
 
 
 @router.post("/callback-atol/")
 async def callback_atol(request: Request, operations_service=Depends(OperationsService)):
-    print("ATOL")
+    logger.info("callback_atol: received callback from ATOL")
     try:
         payload = await request.json()
+        logger.info(f"callback_atol: payload={payload}")
         atol_service = AtolService()
         await atol_service.check_callback_data(payload, operations_service)
+        logger.info(f"callback_atol: processed successfully external_id={payload.get('external_id')} status={payload.get('status')}")
     except Exception as exc:
-        print(f"Ошибка обработки коллбека от ATOL: {type(exc)} - {exc}")
+        logger.error(f"callback_atol: processing error type={type(exc).__name__} error={exc}")
         raise HTTPException(status_code=400, detail="Invalid data")

@@ -1,11 +1,10 @@
 import logging
 import os
-import re
 
 
 class CommonConfig:
     # App
-    API_HOST = "0.0.0.0" # os.getenv("HOST", "0.0.0.0")  # noqa: S104
+    API_HOST = "0.0.0.0"  # os.getenv("HOST", "0.0.0.0")  # noqa: S104
     API_PORT = 8009
     RELOAD = True
     DEBUG: bool = os.getenv("DEBUG", False) in ["1", "True", "true", "y", True, 1]
@@ -23,11 +22,10 @@ class CommonConfig:
 
     # Database
     DB_HOST = os.getenv("DB_HOST")
-    DB_PORT =os.getenv("DB_PORT")
+    DB_PORT = os.getenv("DB_PORT")
     DB_NAME = os.getenv("DB_NAME")
     DB_USER = os.getenv("DB_USER")
     DB_PASSWORD = os.getenv("DB_PASSWORD")
-
 
     DB_URL: str = f"postgres://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
     SQLALCHEMY_DATABASE_URL: str = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
@@ -38,7 +36,7 @@ class CommonConfig:
 
     # Cache
     REDIS_CONNECTION_URL = os.getenv("REDIS_URL")
-    REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+    REDIS_HOST = os.getenv("REDIS_HOST", "redis")
     REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
     CACHE_PREFIX = "prediction_service"
 

@@ -14,11 +14,11 @@ from app import redis_manager
 from .routers.v1 import base
 from .settings import settings
 from .settings.json import CustomJSONLog, CustomRequestJSONLog
-
+from .logger import setup_logging, get_logger
 
 json_logging.CREATE_CORRELATION_ID_IF_NOT_EXISTS = False
 logging.config.dictConfig(settings.LOGGING)
-logger = logging.getLogger("info")
+logger = get_logger()
 json_logging.init_fastapi(enable_json=True, custom_formatter=CustomJSONLog)
 
 app_settings = {
@@ -37,8 +37,9 @@ if not settings.SHOW_DOCS:
     
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    setup_logging()  # инициализируем UDP handler после форка воркера
     await redis_manager.connect()
-    print("Redis подключен")
+    logger.info("Redis connected")
     yield
     await redis_manager.close()
 
@@ -57,8 +58,7 @@ async def startup_event():
 
 @app.exception_handler(ValidationError)
 async def validation_exception_handler(request, exc):
-    logger.error(str(exc))
-    print(f"Validation error: {str(exc)}")  # noqa: T201
+    logger.error(f"Validation error: {str(exc)}")
     raise HTTPException(status_code=500, detail="Server error")
 
 

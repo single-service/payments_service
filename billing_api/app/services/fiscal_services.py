@@ -46,20 +46,23 @@ class AtolService(BaseOFD):
                 ]
             },
             "service": {
-                "callback_url": f"https://{SITE_HOST}/callback-atol/"
+                "callback_url": f"https://{SITE_HOST}/api/v1/callback-atol/"
             },
             "timestamp": datetime.now().strftime("%d.%m.%Y %H:%M:%S"),
             "external_id": str(external_id)
         }
         total = 0
         for entity in order.nomenclature:
-            amount = entity.get("amount")
-            total += amount
+            price_rubles = entity.get("price") / 100
+            count = entity.get("count")
+            amount_kopecks = entity.get("amount")
+            amount_rubles = (amount_kopecks / 100) if amount_kopecks is not None else round(price_rubles * count, 2)
+            total += amount_rubles
             position = {
                 "name": entity.get("name"),
-                "quantity": entity.get("count"),
-                "price": entity.get("price"),
-                "sum": amount,
+                "quantity": count,
+                "price": price_rubles,
+                "sum": amount_rubles,
                 "vat":{ 
                     "type": entity.get("nds") 
                 }

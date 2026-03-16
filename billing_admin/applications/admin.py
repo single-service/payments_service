@@ -7,13 +7,13 @@ from django.contrib import admin, messages
 from django.contrib.auth.admin import GroupAdmin as BaseGroupAdmin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import Group, User
-from django.utils.html import format_html
 from django.utils.translation import gettext as _
 from unfold.admin import ModelAdmin, TabularInline
-from unfold.decorators import action
 
-from .choices import OFD_INTERFACE_PARAMETERS_MAP, PAYMENT_SYSTEM_PARAMETERS_MAP
-from .models import Application, ApplicationToken, OFDInterfaceParamter, PaymentSystemParamter
+from .choices import (OFD_INTERFACE_PARAMETERS_MAP,
+                      PAYMENT_SYSTEM_PARAMETERS_MAP)
+from .models import (Application, ApplicationToken, OFDInterfaceParamter,
+                     PaymentSystemParamter)
 
 admin.site.unregister(User)
 admin.site.unregister(Group)
@@ -32,8 +32,8 @@ class GroupAdmin(BaseGroupAdmin, ModelAdmin):
 class PaymentSystemParamterInline(TabularInline):
     model = PaymentSystemParamter
     extra = 0
-    
-    
+
+
 class OFDInterfaceParamterInline(TabularInline):
     model = OFDInterfaceParamter
     extra = 0
@@ -81,7 +81,7 @@ class ApplicationAdmin(ModelAdmin):
             obj.ofd_interface,
             OFD_INTERFACE_PARAMETERS_MAP
         )
-            
+
     def __sync_parameters(self, model, obj, field_name, field_value, parametrs_map):
         filter_kwargs = {
             field_name: field_value,

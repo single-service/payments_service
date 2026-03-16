@@ -1,4 +1,3 @@
-import logging.config
 import os
 
 os.environ.setdefault("TZ", "Europe/Moscow")
@@ -11,9 +10,6 @@ import typer
 import uvicorn
 
 from app.settings import settings
-
-logging.config.dictConfig(settings.LOGGING)
-logger = logging.getLogger('info')
 
 app = typer.Typer()
 
