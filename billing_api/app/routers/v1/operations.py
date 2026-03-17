@@ -315,7 +315,8 @@ async def payment_callback(
     :param request: объект запроса, содержащий заголовки и тело
     :param payment_method: строка, идентифицирующая используемый метод оплаты
     """
-    logger.info(f"payment_callback: received payment_method={payment_method}")
+    body = await request.body()
+    logger.info(f"payment_callback: received payment_method={payment_method}, body: {body}")
     try:
         payment_service_cls = PAYMENT_SYSTEM_SERVICES_MAP.get(int(payment_method))
     except Exception as e:
@@ -332,7 +333,6 @@ async def payment_callback(
         )
 
     # Чтение тела запроса
-    body = await request.body()
     payload = body.decode()
     payment_service = payment_service_cls()
     data = payment_service.prepare_payload(payload)
