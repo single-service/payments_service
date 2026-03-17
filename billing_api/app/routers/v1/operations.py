@@ -388,21 +388,21 @@ async def payment_callback(
         logger.info(f"payment_callback: fiscal check sent operation_id={operation.id}")
     if application.is_fiscalisation and data.get("status") == OrderStatusChoices.REFUNED:
         ofd_service = OFD_INTERFACE_SERVICE_MAP.get(application.ofd_interface)
-        # background_tasks.add_task(
-        #     ofd_service().register_document,
-        #     application,
-        #     operation,
-        #     ofd_interface_parametrs,
-        #     operations_service,
-        #     "sell_refund"
-        # )
-        await ofd_service().register_document(
+        background_tasks.add_task(
+            ofd_service().register_document,
             application,
             operation,
             ofd_interface_parametrs,
             operations_service,
-            "sell_refund" 
+            "sell_refund"
         )
+        # await ofd_service().register_document(
+        #     application,
+        #     operation,
+        #     ofd_interface_parametrs,
+        #     operations_service,
+        #     "sell_refund" 
+        # )
     payment_system_parametres = await operations_service.get_payment_system_parametres(operation.application_id)
     payment_service.set_system_parameters(**payment_system_parametres)
     error = payment_service.check_payment(operation, data)
