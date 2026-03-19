@@ -1,8 +1,11 @@
+import asyncio
+import json
 import uuid
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, AsyncGenerator
 
 import aiohttp
+from fastapi.responses import StreamingResponse
 from app.enums import OFD_INTERFACE_SERVICE_MAP, PAYMENT_SYSTEM_SERVICES_MAP, OrderStatusChoices
 from app.schemas.billing import (CreateFreeOrderRequest, CreateOrderRequest,
                                  OrdersSchema, RefundRequest)
@@ -59,6 +62,76 @@ async def get_live(
     return result
 
 
+@router.get(
+    "/operations/{operation_id}/status",
+    summary="Получение статуса операции",
+    description="""
+Получение текущего статуса операции по её уникальному идентификатору (SSE).
+Отправляет новый статус операции при его изменении.
+
+**Возвращаемый объект:**
+
+```
+{
+    "data": <status>
+}
+```
+
+**Статусы операции (status) могут быть следующими:**
+
+| status | Описание            |
+| ------ | ------------------- |
+| 1      | Создан              |
+| 2      | Отклонён            |
+| 3      | Оплачен             |
+| 4      | В процессе возврата |
+| 5      | Возвращён           |
+| 6      | Истёк срок          |
+| 7      | Ошибка              |
+| 8      | Неизвестно          |
+
+    """
+)
+async def refund_order(
+    operation_id: str,
+    operations_service=Depends(OperationsService),
+) -> StreamingResponse:
+    
+    async def operation_status_generator(
+        operation_id: str,
+        operations_service: OperationsService,
+        interval: int = 5
+    ):
+        last_status = None
+        while True:
+            try:
+                operation = await operations_service.get_operation(operation_id)
+            except Exception as e:
+                yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
+                break
+
+            if not operation:
+                yield f"event: error\ndata: {json.dumps({'error': 'Operation not found'})}\n\n"
+                break
+
+            current_status = operation.status
+            print(last_status, current_status)
+            if current_status != last_status:
+                last_status = current_status
+                yield f"data: {json.dumps({'data': current_status})}\n\n"
+            else:
+                yield ":\n\n"
+
+            await asyncio.sleep(interval)
+            
+    generator = operation_status_generator(
+        operation_id=operation_id,
+        operations_service=operations_service,
+        interval=5
+    )
+    return StreamingResponse(generator, media_type="text/event-stream")
+
+
 @router.post("/operations/{operation_id}/refund")
 async def refund_order(
     operation_id: str,
@@ -73,10 +146,10 @@ async def refund_order(
             status_code=400,
             detail="Wrong operation"
         )
-    if operation.final_price < refund_request.amount:
+    if operation.final_price != refund_request.amount:
         raise HTTPException(
             status_code=400,
-            detail="The amount cannot be greater than the amount of the canceled operation."
+            detail="The amount must be equal to the amount of the canceled operation."
         )
     payment_service_cls = PAYMENT_SYSTEM_SERVICES_MAP.get(operation.payment_system)
     if not payment_service_cls:
