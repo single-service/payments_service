@@ -1,8 +1,11 @@
+import asyncio
+import json
 import uuid
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, AsyncGenerator
 
 import aiohttp
+from fastapi.responses import StreamingResponse
 from app.enums import OFD_INTERFACE_SERVICE_MAP, PAYMENT_SYSTEM_SERVICES_MAP, OrderStatusChoices
 from app.schemas.billing import (CreateFreeOrderRequest, CreateOrderRequest,
                                  OrdersSchema, RefundRequest)
@@ -59,29 +62,126 @@ async def get_live(
     return result
 
 
+@router.get(
+    "/operations/{operation_id}/status",
+    summary="Получение статуса операции",
+    description="""
+Получение текущего статуса операции по её уникальному идентификатору (SSE).
+Отправляет новый статус операции при его изменении.
+
+**Возвращаемый объект:**
+
+```
+{
+    "data": <status>
+}
+```
+
+**Статусы операции (status) могут быть следующими:**
+
+| status | Описание            |
+| ------ | ------------------- |
+| 1      | Создан              |
+| 2      | Отклонён            |
+| 3      | Оплачен             |
+| 4      | В процессе возврата |
+| 5      | Возвращён           |
+| 6      | Истёк срок          |
+| 7      | Ошибка              |
+| 8      | Неизвестно          |
+
+    """
+)
+async def refund_order(
+    operation_id: str,
+    operations_service=Depends(OperationsService),
+) -> StreamingResponse:
+    
+    async def operation_status_generator(
+        operation_id: str,
+        operations_service: OperationsService,
+        interval: int = 5
+    ):
+        last_status = None
+        while True:
+            try:
+                operation = await operations_service.get_operation(operation_id)
+            except Exception as e:
+                yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
+                break
+
+            if not operation:
+                yield f"event: error\ndata: {json.dumps({'error': 'Operation not found'})}\n\n"
+                break
+
+            current_status = operation.status
+            print(last_status, current_status)
+            if current_status != last_status:
+                last_status = current_status
+                yield f"data: {json.dumps({'data': current_status})}\n\n"
+            else:
+                yield ":\n\n"
+
+            await asyncio.sleep(interval)
+            
+    generator = operation_status_generator(
+        operation_id=operation_id,
+        operations_service=operations_service,
+        interval=5
+    )
+    return StreamingResponse(generator, media_type="text/event-stream")
+
+
 @router.post("/operations/{operation_id}/refund")
 async def refund_order(
     operation_id: str,
     refund_request: RefundRequest,
     application_id=Depends(TokenAuth),
+    operations_service=Depends(OperationsService),
 ):
-    # Пока эндпоинт в разработке, можно вернуть ошибку 400 с сообщением
-    raise HTTPException(
-        status_code=400,
-        detail="This endpoint is under development"
-    )
+    operation = await operations_service.get_operation(operation_id)
+    if not operation:
+        logger.error(f"refund: operation not found {operation_id=}")
+        raise HTTPException(
+            status_code=400,
+            detail="Wrong operation"
+        )
+    if operation.final_price != refund_request.amount:
+        raise HTTPException(
+            status_code=400,
+            detail="The amount must be equal to the amount of the canceled operation."
+        )
+    payment_service_cls = PAYMENT_SYSTEM_SERVICES_MAP.get(operation.payment_system)
+    if not payment_service_cls:
+        logger.error(f"refund: payment system not ready payment_system={operation.payment_system}")
+        raise HTTPException(status_code=400, detail="This payment system is not ready")
 
+    payment_system_parametres = await operations_service.get_payment_system_parametres(application_id)
+    payment_service = payment_service_cls()
+    payment_service.set_system_parameters(**payment_system_parametres)
+    amount = refund_request.amount * 100
+    try:
+        await payment_service.refund(operation, amount)
+        await operations_service.update_order(
+            operation_id,
+            status=OrderStatusChoices.IS_REFUNDING
+        )
+        return {"status": "success"}
+    except Exception as exc:
+        logger.error(f"{exc}")
+        raise HTTPException(status_code=400, detail="Error refund")
+        
 
-@router.post("/operations/{operation_id}/cancel")
-async def cancel_order(
-    operation_id: str,
-    application_id=Depends(TokenAuth),
-):
-    # Пока эндпоинт в разработке, можно вернуть ошибку 400 с сообщением
-    raise HTTPException(
-        status_code=400,
-        detail="This endpoint is under development"
-    )
+# @router.post("/operations/{operation_id}/cancel")
+# async def cancel_order(
+#     operation_id: str,
+#     application_id=Depends(TokenAuth),
+# ):
+#     # Пока эндпоинт в разработке, можно вернуть ошибку 400 с сообщением
+#     raise HTTPException(
+#         status_code=400,
+#         detail="This endpoint is under development"
+#     )
 
 
 @router.post("/operations/")
@@ -251,7 +351,7 @@ async def create_free_order(
 
     operation_id = str(uuid.uuid4())
     amount_rubles = create_body.amount / 100
-    link = payment_service.create_link(
+    link, order_id = payment_service.create_link(
         final_amount=amount_rubles,
         user_email=create_body.user_email,
         description=create_body.description,
@@ -281,7 +381,7 @@ async def create_free_order(
         idempotent_key=create_body.idempotent_key,
         amount=create_body.amount,
         discount_amount=0,
-        payment_system_order_id=None,
+        payment_system_order_id=order_id,
         payment_link=link,
         is_subscription_first_order=None,
         nomenclature=[item.model_dump() for item in create_body.nomenclature],
@@ -351,13 +451,31 @@ async def payment_callback(
         logger.info(f"payment_callback: sending fiscal check operation_id={operation.id} ofd_interface={application.ofd_interface}")
         ofd_service = OFD_INTERFACE_SERVICE_MAP.get(application.ofd_interface)
         background_tasks.add_task(
-            ofd_service().create_sell_check,
+            ofd_service().register_document,
             application,
             operation,
             ofd_interface_parametrs,
-            operations_service
+            operations_service,
+            "sell"
         )
         logger.info(f"payment_callback: fiscal check sent operation_id={operation.id}")
+    if application.is_fiscalisation and data.get("status") == OrderStatusChoices.REFUNED:
+        ofd_service = OFD_INTERFACE_SERVICE_MAP.get(application.ofd_interface)
+        background_tasks.add_task(
+            ofd_service().register_document,
+            application,
+            operation,
+            ofd_interface_parametrs,
+            operations_service,
+            "sell_refund"
+        )
+        # await ofd_service().register_document(
+        #     application,
+        #     operation,
+        #     ofd_interface_parametrs,
+        #     operations_service,
+        #     "sell_refund" 
+        # )
     payment_system_parametres = await operations_service.get_payment_system_parametres(operation.application_id)
     payment_service.set_system_parameters(**payment_system_parametres)
     error = payment_service.check_payment(operation, data)

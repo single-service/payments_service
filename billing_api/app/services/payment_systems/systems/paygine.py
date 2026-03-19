@@ -5,8 +5,12 @@ from datetime import datetime
 from decimal import Decimal
 from typing import List, Optional
 
+import aiohttp
 import requests
 from app.services.payment_systems.main_interface import PaymentSystemInterface
+from app.logger import get_logger
+
+logger = get_logger()
 
 
 class PayginePaymentSystemService(PaymentSystemInterface):
@@ -87,7 +91,8 @@ class PayginePaymentSystemService(PaymentSystemInterface):
             self.PAYGINE_SECTOR, order_id, self.PAYGINE_SIGN_PASSWORD)
         return (
             f"{self.PAYGINE_BASE_URL}/webapi/Purchase"
-            f"?sector={self.PAYGINE_SECTOR}&id={order_id}&signature={sig}"
+            f"?sector={self.PAYGINE_SECTOR}&id={order_id}&signature={sig}",
+            order_id
         )
 
     def _verify_xml_signature(self, xml_str: str) -> bool:
@@ -140,12 +145,29 @@ class PayginePaymentSystemService(PaymentSystemInterface):
         operation_id = reference[:36] if len(reference) >= 36 else reference
 
         fee_kopecks = int(data.get("fee", 0) or 0)
-        status_maps = {"APPROVED": OrderStatusChoices.PAID, "REJECTED": OrderStatusChoices.REJECTED,
-                       "ERROR": OrderStatusChoices.ERROR, "TIMEOUT": OrderStatusChoices.EXPIRED, "": OrderStatusChoices.UNKNOWN}
-
+        # operation_status_maps = {
+        #     "APPROVED": OrderStatusChoices.PAID, 
+        #     "REJECTED": OrderStatusChoices.REJECTED,
+        #     "ERROR": OrderStatusChoices.ERROR, 
+        #     "TIMEOUT": OrderStatusChoices.EXPIRED, 
+        #     "": OrderStatusChoices.UNKNOWN
+        # }
+        status = ""
+        if data.get("order_state") == "CANCELED" and data.get("state") == "APPROVED":
+            status = OrderStatusChoices.REFUNED
+        elif data.get("order_state") == "COMPLETED" and data.get("state") == "APPROVED":
+            status = OrderStatusChoices.PAID
+        elif data.get("order_state") == "REGISTERED" and data.get("state") == "REJECTED":
+            status = OrderStatusChoices.REJECTED
+        elif data.get("order_state") == "REGISTERED" and data.get("state") == "ERROR":
+            status = OrderStatusChoices.ERROR
+        elif data.get("order_state") == "REGISTERED" and data.get("state") == "TIMEOUT":
+            status = OrderStatusChoices.UNKNOWN
+        elif data.get("order_state") == "EXPIRED":
+            status = OrderStatusChoices.EXPIRED
         return {
             "payment_dt": datetime.now(),
-            "status": status_maps[data.get("state", "")],
+            "status": status,
             "fee": fee_kopecks / 100,
             "invoice_id": data.get("order_id", ""),
             "receipt_link": "",
@@ -163,3 +185,46 @@ class PayginePaymentSystemService(PaymentSystemInterface):
     def get_nomenclature(self, base_sno, base_nds, base_items: List[dict]) -> Optional[dict]:
         """Paygine не поддерживает фискализацию через этот интерфейс — возвращаем None."""
         return None
+    
+    async def refund(self, order, amount):
+        CURRENCY_MAP = {
+            'RUB': 643,
+            'USD': 840,
+            'EUR': 978
+        }     
+        sig = self._make_signature(
+            self.PAYGINE_SECTOR, 
+            order.payment_system_order_id, 
+            amount,
+            CURRENCY_MAP[order.currency],
+            self.PAYGINE_SIGN_PASSWORD
+        )
+        payload = {
+            "sector": self.PAYGINE_SECTOR,
+            "id": order.payment_system_order_id,
+            "amount": amount,
+            "currency": CURRENCY_MAP[order.currency],
+            "signature": sig,
+        }
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    f"{self.PAYGINE_BASE_URL}/webapi/Reverse",
+                    data=payload,
+                    timeout=aiohttp.ClientTimeout(total=10)
+                ) as response:
+                    body = await response.text()
+                try:
+                    root = ET.fromstring(body)
+                    data = {child.tag: (child.text or "").strip() for child in root}
+                    return data["state"]
+                except ET.ParseError as exc:
+                    logger.error(f"Ошибка: {type(exc)} - {exc}")
+                    raise Exception(f"Ошибка: {type(exc)} - {exc}")
+                except KeyError as exc:
+                    raise Exception(f"Ошибка: {type(exc)} - {exc}, {data=}")
+        except aiohttp.ClientError as exc:
+            logger.error(f"Ошибка соединения с PAYGINE: {exc}")
+            raise Exception(
+                f"Ошибка соединения с PAYGINE: {exc}"
+            ) from exc

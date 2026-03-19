@@ -28,7 +28,10 @@ class OperationsService:
     async def get_operation(self, id):
         query = select(Order).filter_by(id=id)
         result = await self.session.execute(query)
-        return result.scalar_one_or_none()
+        operation = result.scalar_one_or_none()
+        if operation:
+            await self.session.refresh(operation)
+        return operation
 
     async def get_operations_count(self, application_id):
         query = select(func.count()).select_from(Order).filter_by(application_id=application_id)

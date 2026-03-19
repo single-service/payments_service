@@ -22,7 +22,7 @@ class BaseOFD(ABC):
 
 class AtolService(BaseOFD):
     
-    async def create_sell_check(self, application, order, params, operations_service):
+    async def register_document(self, application, order, params, operations_service, operation_type: str):
         from app.enums import DocumentType
         
         SITE_HOST = os.getenv("SITE_HOST")
@@ -81,7 +81,7 @@ class AtolService(BaseOFD):
         document_id = await operations_service.create_fiscal_document(
             str(external_id),
             order.id,
-            DocumentType.SALE.value,
+            DocumentType.SALE.value if operation_type == "sell" else DocumentType.REFUND.value,
             data,
             created_dt=datetime.now(),
             updated_dt=datetime.now(),
@@ -92,7 +92,7 @@ class AtolService(BaseOFD):
             params.get("ATOL_LOGIN"),
             params.get("ATOL_PASSWORD"),
             params.get("ATOL_ID_GROUP_KKT"),
-        ).register_document(data, "sell")
+        ).register_document(data, operation_type)
         await operations_service.update_fiscal_document(
             document_id,
             ofd_document_id=uuid_document,

@@ -61,6 +61,7 @@ class Atol:
                     json=data,
                     timeout=aiohttp.ClientTimeout(total=10)
                 ) as response:
+                    print(response.status, response.content)
                     body = await response.json()
             uuid = body.get("uuid")
             status = body.get("status")
