@@ -2,7 +2,7 @@ import asyncio
 import json
 import uuid
 from datetime import datetime
-from typing import Annotated, AsyncGenerator
+from typing import Annotated
 
 import aiohttp
 from fastapi.responses import StreamingResponse
@@ -92,11 +92,11 @@ async def get_live(
 
     """
 )
-async def refund_order(
+async def order_status(
     operation_id: str,
     operations_service=Depends(OperationsService),
 ) -> StreamingResponse:
-    
+
     async def operation_status_generator(
         operation_id: str,
         operations_service: OperationsService,
@@ -123,13 +123,20 @@ async def refund_order(
                 yield ":\n\n"
 
             await asyncio.sleep(interval)
-            
+
     generator = operation_status_generator(
         operation_id=operation_id,
         operations_service=operations_service,
         interval=5
     )
-    return StreamingResponse(generator, media_type="text/event-stream")
+    return StreamingResponse(
+        generator,
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.post("/operations/{operation_id}/refund")
@@ -170,7 +177,7 @@ async def refund_order(
     except Exception as exc:
         logger.error(f"{exc}")
         raise HTTPException(status_code=400, detail="Error refund")
-        
+
 
 # @router.post("/operations/{operation_id}/cancel")
 # async def cancel_order(
@@ -190,7 +197,8 @@ async def create_order(
     application_id=Depends(TokenAuth),
     operations_service=Depends(OperationsService),
 ):
-    logger.info(f"create_order: application_id={application_id} payment_item_id={create_body.payment_item_id} idempotent_key={create_body.idempotent_key}")
+    logger.info(
+        f"create_order: application_id={application_id} payment_item_id={create_body.payment_item_id} idempotent_key={create_body.idempotent_key}")
     # Валидация
     validated_data, error = await validate_create_order(
         application_id=application_id,
@@ -223,7 +231,8 @@ async def create_order(
     is_subscription_first_order = True if payment_item.is_subscription else None
     nomenclature = None
     if application.is_fiscalisation:
-        logger.info(f"create_order: fiscalisation enabled for application_id={application_id} operation_id={operation_id}")
+        logger.info(
+            f"create_order: fiscalisation enabled for application_id={application_id} operation_id={operation_id}")
         base_items = [
             {
                 "name": payment_item.name,
@@ -335,14 +344,16 @@ async def create_free_order(
 
     application = await operations_service.get_application(application_id)
     if application.is_fiscalisation and (not create_body.user_email or not create_body.nomenclature):
-        logger.warning(f"create_free_order: fiscalisation enabled but email/nomenclature missing application_id={application_id}")
+        logger.warning(
+            f"create_free_order: fiscalisation enabled but email/nomenclature missing application_id={application_id}")
         raise HTTPException(
             status_code=422,
             detail="When fiscalizing, you must fill in the user's email address and product code."
         )
     payment_service_cls = PAYMENT_SYSTEM_SERVICES_MAP.get(application.payment_system)
     if not payment_service_cls:
-        logger.error(f"create_free_order: payment system not ready payment_system={application.payment_system} application_id={application_id}")
+        logger.error(
+            f"create_free_order: payment system not ready payment_system={application.payment_system} application_id={application_id}")
         raise HTTPException(status_code=400, detail="This payment system is not ready")
 
     payment_system_parametres = await operations_service.get_payment_system_parametres(application_id)
@@ -390,7 +401,8 @@ async def create_free_order(
     if not create_status:
         logger.error(f"create_free_order: failed to save operation_id={operation_id} application_id={application_id}")
         raise HTTPException(status_code=400, detail="Order create failed")
-    logger.info(f"create_free_order: success operation_id={operation_id} amount={create_body.amount} user_id={create_body.user_id}")
+    logger.info(
+        f"create_free_order: success operation_id={operation_id} amount={create_body.amount} user_id={create_body.user_id}")
     return payload
 
 
@@ -448,7 +460,8 @@ async def payment_callback(
     application = await operations_service.get_application(operation.application_id)
     ofd_interface_parametrs = await operations_service.get_ofd_interface_parametres(operation.application_id)
     if application.is_fiscalisation and data.get("status") == OrderStatusChoices.PAID:
-        logger.info(f"payment_callback: sending fiscal check operation_id={operation.id} ofd_interface={application.ofd_interface}")
+        logger.info(
+            f"payment_callback: sending fiscal check operation_id={operation.id} ofd_interface={application.ofd_interface}")
         ofd_service = OFD_INTERFACE_SERVICE_MAP.get(application.ofd_interface)
         background_tasks.add_task(
             ofd_service().register_document,
@@ -474,7 +487,7 @@ async def payment_callback(
         #     operation,
         #     ofd_interface_parametrs,
         #     operations_service,
-        #     "sell_refund" 
+        #     "sell_refund"
         # )
     payment_system_parametres = await operations_service.get_payment_system_parametres(operation.application_id)
     payment_service.set_system_parameters(**payment_system_parametres)
@@ -509,7 +522,8 @@ async def payment_callback(
     }
     application = await operations_service.get_application(operation.application_id)
     if application.callback_url:
-        logger.info(f"payment_callback: sending outgoing callback to {application.callback_url} operation_id={operation.id}")
+        logger.info(
+            f"payment_callback: sending outgoing callback to {application.callback_url} operation_id={operation.id}")
         background_tasks.add_task(perform_callback, application.callback_url, callback_payload)
     return {"detail": "OK"}
 
@@ -522,7 +536,8 @@ async def callback_atol(request: Request, operations_service=Depends(OperationsS
         logger.info(f"callback_atol: payload={payload}")
         atol_service = AtolService()
         await atol_service.check_callback_data(payload, operations_service)
-        logger.info(f"callback_atol: processed successfully external_id={payload.get('external_id')} status={payload.get('status')}")
+        logger.info(
+            f"callback_atol: processed successfully external_id={payload.get('external_id')} status={payload.get('status')}")
     except Exception as exc:
         logger.error(f"callback_atol: processing error type={type(exc).__name__} error={exc}")
         raise HTTPException(status_code=400, detail="Invalid data")

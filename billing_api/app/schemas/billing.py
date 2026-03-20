@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 from typing import List, Optional
 
 from app.enums import (MeasureEnum, PaymentMethodEnum, PaymentTypeEnum,
@@ -16,10 +17,10 @@ class OrderSchema(BaseModel):
     is_subscription: bool
     items_count: int
     discount_value: int
-    refunding_start_dt: Optional[datetime]
-    refund_dt: Optional[datetime]
-    refund_amount: condecimal(max_digits=11, decimal_places=2)
-    fee: condecimal(max_digits=11, decimal_places=2)
+    refunding_start_dt: Optional[datetime] = None
+    refund_dt: Optional[datetime] = None
+    refund_amount: Optional[Decimal] = None
+    fee: Optional[Decimal] = None
     receipt_link: Optional[str]
     user_id: str
     user_email: Optional[str]
