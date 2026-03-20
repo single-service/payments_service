@@ -17,9 +17,9 @@ class OperationsService:
     async def get_operations(self, application_id, page, limit, status, user_id):
         query = select(Order).filter_by(application_id=application_id)
         if status:
-            query = query.filter(status=status)
+            query = query.filter_by(status=status)
         if user_id:
-            query = query.filter(user_id=user_id)
+            query = query.filter_by(user_id=user_id)
         # Пагинация
         query = query.offset((page - 1) * limit).limit(limit)
         groups = await self.session.execute(query)

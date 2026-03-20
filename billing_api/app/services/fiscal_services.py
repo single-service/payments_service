@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 from datetime import datetime
 import os
 import uuid
@@ -14,10 +14,7 @@ SNO_MAP = {
 }
 
 class BaseOFD(ABC):
-
-    @abstractmethod
-    async def create_sell_check(self, application, order):
-        raise NotImplementedError    
+    pass
 
 
 class AtolService(BaseOFD):
