@@ -9,5 +9,5 @@ class FiscalDocumentAdmin(ModelAdmin):
     list_display = [
         "created_dt", "order", "document_type", "status",
     ]
-    list_filter = ["status", "document_type", "created_dt"]
+    list_filter = ["status", "document_type"]
     ordering = ('-created_dt',)

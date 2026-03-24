@@ -10,3 +10,4 @@ class StatusChoices(IntegerChoices):
     EXPIRED = 6, _("Expired")
     ERROR = 7, _("Error")
     UNKNOWN = 8, _("Unknown")
+    PARTIALLY_REFUNDED = 9, _("Partially refunded")
