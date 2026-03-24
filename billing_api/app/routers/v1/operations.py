@@ -538,15 +538,8 @@ async def payment_callback(
             order_id=operation.id,
             transaction_id=data["addtional_fields"]["transaction_id"]
         )
-        # background_tasks.add_task(
-        #     ofd_service().register_document,
-        #     application,
-        #     operation,
-        #     ofd_interface_parametrs,
-        #     operations_service,
-        #     "sell_refund"
-        # )
-        await ofd_service().register_document(
+        background_tasks.add_task(
+            ofd_service().register_document,
             application,
             operation,
             ofd_interface_parametrs,
