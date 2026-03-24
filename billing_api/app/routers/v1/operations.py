@@ -201,7 +201,7 @@ async def refund_order(
             order_id=operation_id,
             amount=refund_request.amount,
             status="pending",
-            nomenclature=[item.model_dump() for item in refund_request.nomenclature] if refund_request.nomenclature else None,
+            nomenclature=[item.model_dump() for item in refund_request.nomenclature],
             transaction_id=transaction_id,
             updated_dt=datetime.now(),
             created_dt=datetime.now(),
