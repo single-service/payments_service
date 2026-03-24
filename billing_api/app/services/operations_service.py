@@ -244,10 +244,19 @@ class OperationsService:
         refunded_amount = result.scalar_one()
         return refunded_amount
     
-    async def get_order_refunds(self, order_id):
+    async def get_order_refunds(self, order_id, **kwargs):
+        limit = kwargs.pop("limit", None)
+        page = kwargs.pop("page", None)
         query = select(Refund).filter_by(order_id=order_id)
+        if limit and page:
+            query = query.offset((page - 1) * limit).limit(limit)
         result = await self.session.execute(query)
         return result.scalars().all()
+    
+    async def get_order_refunds_count(self, order_id: str):
+        query = select(func.count()).select_from(Refund).filter_by(order_id=order_id)
+        result = await self.session.execute(query)
+        return result.scalar()
     
     async def get_order_refund(self, **kwargs):
         query = select(Refund).filter_by(**kwargs)
@@ -279,9 +288,19 @@ class OperationsService:
             return False
         return True
     
-    async def get_refunds_by_ids(self, order_ids: list):
+    async def get_refunds_by_ids(self, order_ids: list, limit: int, page: int):
         if not order_ids:
             return []
-        stmt = select(Refund).where(Refund.order_id.in_(order_ids))
+        stmt = (
+            select(Refund)
+            .where(Refund.order_id.in_(order_ids))
+            .offset((page - 1) * limit)
+            .limit(limit)
+        )
         result = await self.session.execute(stmt)
         return result.scalars().all()
+    
+    async def get_refunds_by_ids_count(self, order_ids: list):
+        query = select(func.count()).select_from(Refund).where(Refund.order_id.in_(order_ids))
+        result = await self.session.execute(query)
+        return result.scalar()

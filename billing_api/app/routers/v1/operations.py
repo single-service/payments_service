@@ -8,7 +8,7 @@ import aiohttp
 from fastapi.responses import StreamingResponse
 from app.enums import OFD_INTERFACE_SERVICE_MAP, PAYMENT_SYSTEM_SERVICES_MAP, OrderStatusChoices
 from app.schemas.billing import (CreateFreeOrderRequest, CreateOrderRequest,
-                                 OrdersSchema, RefundRequest, RefundScheme)
+                                 OrdersSchema, RefundRequest, RefundResonseSchema, RefundScheme)
 from app.services.operations_service import OperationsService
 from app.utils.auth import TokenAuth
 from app.validators.order import validate_create_order
@@ -214,10 +214,25 @@ async def refund_order(
 
 @router.get(
     "/operations/refunds",
-    response_model=list[RefundScheme]
+    response_model=RefundResonseSchema,
+    description="""
+Получение списка возвратов.
+При передаче в параметрах запроса operation_id будет возвращен список возвратов по операции.
+
+**Статусы возвратов (status) могут быть следующими:**
+
+| status    | Описание            |
+| --------- | ------------------- |
+| pending   | В обработке         |
+| failed    | Отклонён            |
+| done      | Успешно             |
+
+    """
 )    
 async def get_refunds(
     operation_id: str = None,
+    limit: int = Query(50, description="Limit"),
+    page: int = Query(1, description="Page"),
     application_id=Depends(TokenAuth),
     operations_service=Depends(OperationsService),
 ):
@@ -229,7 +244,14 @@ async def get_refunds(
     if not operation_id:
         operations = await operations_service.get_all_operations(application_id)
         order_ids = [op.id for op in operations]
-        return await operations_service.get_refunds_by_ids(order_ids)
+        refunds = await operations_service.get_refunds_by_ids(order_ids, limit, page)
+        cnt = await operations_service.get_refunds_by_ids_count(order_ids)
+        return {
+            "count": cnt,
+            "limit": limit,
+            "page": page,
+            "refunds": refunds
+        }
     operation = await operations_service.get_operation(operation_id)
     if not operation:
         logger.error(f"refund: operation not found {operation_id=}")
@@ -242,7 +264,20 @@ async def get_refunds(
             status_code=404,
             detail="Not found"
         )
-    return await operations_service.get_order_refunds(operation_id)
+    refunds = await operations_service.get_order_refunds(
+        operation_id, 
+        limit=limit, 
+        page=page
+    )
+    cnt = await operations_service.get_order_refunds_count(
+        operation_id
+    )
+    return {
+        "count": cnt,
+        "limit": limit,
+        "page": page,
+        "refunds": refunds
+    }
 
 
 @router.post("/operations/")
