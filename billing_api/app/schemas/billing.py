@@ -237,3 +237,10 @@ class RefundScheme(BaseModel):
     )
     status: RefundStatus
     created_dt: datetime
+    
+    
+class RefundResonseSchema(BaseModel):
+    count: int
+    page: int
+    limit: int
+    refunds: List[RefundScheme]
