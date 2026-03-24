@@ -28,6 +28,7 @@ class OrderStatusChoices(IntEnum):
             OrderStatusChoices.EXPIRED: "Истёк срок",
             OrderStatusChoices.ERROR: "Ошибка",
             OrderStatusChoices.UNKNOWN: "Неизвестно",
+            OrderStatusChoices.PARTIALLY_REFUNDED: "Частично возвращен"
         }[self]
 
 
