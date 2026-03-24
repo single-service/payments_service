@@ -226,6 +226,7 @@ class RefundRequest(BaseModel):
 
 
 class RefundScheme(BaseModel):
+    order_id: str
     amount: int = Field(
         ..., ge=1,
         description="[Обязательное] Сумма возврата в копейках. Пример: 10000 = 100₽, 15050 = 150₽ 50коп"
