@@ -65,7 +65,8 @@ INSTALLED_APPS = [
     'applications',
     'payments',
     'billing',
-    'fiscal_documents'
+    'fiscal_documents',
+    'refunds'
 ]
 
 MIDDLEWARE = [

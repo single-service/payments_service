@@ -145,23 +145,18 @@ class PayginePaymentSystemService(PaymentSystemInterface):
         operation_id = reference[:36] if len(reference) >= 36 else reference
 
         fee_kopecks = int(data.get("fee", 0) or 0)
-        # operation_status_maps = {
-        #     "APPROVED": OrderStatusChoices.PAID, 
-        #     "REJECTED": OrderStatusChoices.REJECTED,
-        #     "ERROR": OrderStatusChoices.ERROR, 
-        #     "TIMEOUT": OrderStatusChoices.EXPIRED, 
-        #     "": OrderStatusChoices.UNKNOWN
-        # }
         status = ""
-        if data.get("order_state") == "CANCELED" and data.get("state") == "APPROVED":
+        if data.get("order_state") == "CANCELED" and data.get("state") == "APPROVED" and data.get("type") == "REVERSE":
             status = OrderStatusChoices.REFUNED
-        elif data.get("order_state") == "COMPLETED" and data.get("state") == "APPROVED":
+        if data.get("order_state") == "COMPLETED" and data.get("state") == "APPROVED" and data.get("type") == "REVERSE":
+            status = OrderStatusChoices.PARTIALLY_REFUNDED
+        elif data.get("order_state") == "COMPLETED" and data.get("state") == "APPROVED" and data.get("type") == "PURCHASE":
             status = OrderStatusChoices.PAID
-        elif data.get("order_state") == "REGISTERED" and data.get("state") == "REJECTED":
+        elif data.get("order_state") == "REGISTERED" and data.get("state") == "REJECTED" and data.get("type") == "PURCHASE":
             status = OrderStatusChoices.REJECTED
-        elif data.get("order_state") == "REGISTERED" and data.get("state") == "ERROR":
+        elif data.get("order_state") == "REGISTERED" and data.get("state") == "ERROR" and data.get("type") == "PURCHASE":
             status = OrderStatusChoices.ERROR
-        elif data.get("order_state") == "REGISTERED" and data.get("state") == "TIMEOUT":
+        elif data.get("order_state") == "REGISTERED" and data.get("state") == "TIMEOUT" and data.get("type") == "PURCHASE":
             status = OrderStatusChoices.UNKNOWN
         elif data.get("order_state") == "EXPIRED":
             status = OrderStatusChoices.EXPIRED
@@ -217,7 +212,8 @@ class PayginePaymentSystemService(PaymentSystemInterface):
                 try:
                     root = ET.fromstring(body)
                     data = {child.tag: (child.text or "").strip() for child in root}
-                    return data["state"]
+                    print(f"Response {data=}")
+                    return data["id"]
                 except ET.ParseError as exc:
                     logger.error(f"Ошибка: {type(exc)} - {exc}")
                     raise Exception(f"Ошибка: {type(exc)} - {exc}")

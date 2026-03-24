@@ -1,4 +1,4 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 from datetime import datetime
 import os
 import uuid
@@ -14,12 +14,25 @@ SNO_MAP = {
 }
 
 class BaseOFD(ABC):
-    pass
+
+    @abstractmethod
+    async def register_document(self, application, order):
+        raise NotImplementedError    
 
 
 class AtolService(BaseOFD):
     
-    async def register_document(self, application, order, params, operations_service, operation_type: str):
+    async def register_document(
+        self, 
+        application, 
+        order, 
+        params, 
+        operations_service, 
+        nomenclature: list, 
+        operation_type: str,
+        order_id: str = None,
+        refund_id: str = None
+    ):
         from app.enums import DocumentType
         
         SITE_HOST = os.getenv("SITE_HOST")
@@ -49,7 +62,7 @@ class AtolService(BaseOFD):
             "external_id": str(external_id)
         }
         total = 0
-        for entity in order.nomenclature:
+        for entity in nomenclature:
             price_rubles = entity.get("price") / 100
             count = entity.get("count")
             amount_kopecks = entity.get("amount")
@@ -75,14 +88,26 @@ class AtolService(BaseOFD):
             data["receipt"]["items"].append(position)
         data["receipt"]["total"] = total
         data["receipt"]["payments"][0]["sum"] = total
-        document_id = await operations_service.create_fiscal_document(
-            str(external_id),
-            order.id,
-            DocumentType.SALE.value if operation_type == "sell" else DocumentType.REFUND.value,
-            data,
-            created_dt=datetime.now(),
-            updated_dt=datetime.now(),
-        )
+        if operation_type == "sell":
+            document_id = await operations_service.create_fiscal_document(
+                str(external_id),
+                order_id,
+                None,
+                DocumentType.SALE.value,
+                data,
+                created_dt=datetime.now(),
+                updated_dt=datetime.now(),
+            )
+        else:
+            document_id = await operations_service.create_fiscal_document(
+                str(external_id),
+                None,
+                refund_id,
+                DocumentType.REFUND.value,
+                data,
+                created_dt=datetime.now(),
+                updated_dt=datetime.now(),
+            )
         if document_id is None:
             return
         uuid_document, status, error = await Atol(

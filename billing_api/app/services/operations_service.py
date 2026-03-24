@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from app.database_connector import get_async_session
 from app.models import (Application, Order, PaymentItem, PaymentItemDiscount,
-                        PaymentSystemParamter, OFDInterfaceParametr, FiscalDocument)
+                        PaymentSystemParamter, OFDInterfaceParametr, FiscalDocument, Refund)
 from fastapi import Depends
 from sqlalchemy import desc, func, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,6 +24,11 @@ class OperationsService:
         query = query.offset((page - 1) * limit).limit(limit)
         groups = await self.session.execute(query)
         return groups.scalars().all()
+    
+    async def get_all_operations(self, application_id):
+        query = select(Order).filter_by(application_id=application_id)
+        results = await self.session.execute(query)
+        return results.scalars().all()
 
     async def get_operation(self, id):
         query = select(Order).filter_by(id=id)
@@ -94,6 +99,7 @@ class OperationsService:
         self, 
         id, 
         order_id, 
+        refund_id,
         document_type, 
         data,
         created_dt,
@@ -102,6 +108,7 @@ class OperationsService:
         new_fiscal_document = dict(
             id=id,
             order_id=order_id,
+            refund_id=refund_id,
             document_type=document_type,
             request_payload=data,
             created_dt=created_dt,
@@ -224,3 +231,57 @@ class OperationsService:
             print(f"Update order exception: {e}")
             return False
         return True
+    
+    async def get_amount_refunds(self, order_id):
+        stmt = (
+            select(func.coalesce(func.sum(Refund.amount), 0))
+            .where(
+                Refund.order_id == order_id,
+                Refund.status == "done"
+            )
+        )
+        result = await self.session.execute(stmt)
+        refunded_amount = result.scalar_one()
+        return refunded_amount
+    
+    async def get_order_refunds(self, order_id):
+        query = select(Refund).filter_by(order_id=order_id)
+        result = await self.session.execute(query)
+        return result.scalars().all()
+    
+    async def get_order_refund(self, **kwargs):
+        query = select(Refund).filter_by(**kwargs)
+        result = await self.session.execute(query)
+        return result.scalar_one_or_none()
+    
+    async def create_refund(self, **kwargs):
+        try:
+            await self.session.execute(
+                insert(Refund)
+                .values(**kwargs)
+            )
+            await self.session.commit()
+        except Exception as e:
+            print(f"Create refund Exception: {e}")
+            return None
+        
+    async def update_order_refund(self, order_id, transaction_id, **kwargs):
+        try:
+            stmt = (
+                update(Refund)
+                .where(Refund.order_id == order_id, Refund.transaction_id == transaction_id)
+                .values(**kwargs)
+            )
+            await self.session.execute(stmt)
+            await self.session.commit()
+        except Exception as e:
+            print(f"Update order exception: {e}")
+            return False
+        return True
+    
+    async def get_refunds_by_ids(self, order_ids: list):
+        if not order_ids:
+            return []
+        stmt = select(Refund).where(Refund.order_id.in_(order_ids))
+        result = await self.session.execute(stmt)
+        return result.scalars().all()

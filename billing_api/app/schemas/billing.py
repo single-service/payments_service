@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import List, Optional
 
-from app.enums import (MeasureEnum, PaymentMethodEnum, PaymentTypeEnum,
+from app.enums import (MeasureEnum, PaymentMethodEnum, PaymentTypeEnum, RefundStatus,
                        VatTypeEnum)
 from pydantic import BaseModel, Field, condecimal
 
@@ -33,8 +33,8 @@ class OrdersSchema(BaseModel):
     orders: List[OrderSchema]
 
 
-class RefundRequest(BaseModel):
-    amount: condecimal(max_digits=11, decimal_places=2)
+# class RefundRequest(BaseModel):
+#     amount: condecimal(max_digits=11, decimal_places=2)
 
 
 class CreateOrderRequest(BaseModel):
@@ -192,3 +192,47 @@ class CreateFreeOrderRequest(BaseModel):
             }
         }
     }
+    
+    
+class RefundRequest(BaseModel):
+    amount: int = Field(
+        ..., ge=1,
+        description="[Обязательное] Сумма возврата в копейках. Пример: 10000 = 100₽, 15050 = 150₽ 50коп"
+    )
+    nomenclature: list[NomenclatureModel] = Field(
+        [],
+        description="[Необязательное, но обязательно при фискализации] Список товарных позиций для возврата"
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "amount": 15000,
+                "nomenclature": [
+                    {
+                        "amount": 15000,
+                        "count": 2.0,
+                        "price": 7500,
+                        "name": "Товар А",
+                        "nds": "vat20",
+                        "payment_method": "full_payment",
+                        "measure": 22,
+                        "payment_type": "service",
+                    }
+                ]
+            }
+        }
+    }
+
+
+class RefundScheme(BaseModel):
+    amount: int = Field(
+        ..., ge=1,
+        description="[Обязательное] Сумма возврата в копейках. Пример: 10000 = 100₽, 15050 = 150₽ 50коп"
+    )
+    nomenclature: list[NomenclatureModel] = Field(
+        [],
+        description="[Необязательное, но обязательно при фискализации] Список товарных позиций для возврата"
+    )
+    status: RefundStatus
+    created_dt: datetime

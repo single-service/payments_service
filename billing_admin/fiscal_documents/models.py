@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils.translation import gettext as _
+from django.core.exceptions import ValidationError
 
 from applications.models import AbstractBaseModel
 
@@ -19,7 +20,17 @@ class FiscalDocument(AbstractBaseModel):
         "billing.Order",
         on_delete=models.CASCADE,
         related_name="fiscal_documents",
-        verbose_name=_("Заказ")
+        verbose_name=_("Заказ"),
+        blank=True,
+        null=True
+    )
+    refund = models.ForeignKey(
+        "refunds.Refund",
+        on_delete=models.CASCADE,
+        related_name="fiscal_documents",
+        verbose_name=_("Возврат"),
+        blank=True,
+        null=True
     )
     ofd_document_id = models.UUIDField(
         _("Идентификатор документа в ОФД"),
@@ -58,4 +69,20 @@ class FiscalDocument(AbstractBaseModel):
         verbose_name_plural = "Фискальные документы"
 
     def __str__(self):
-        return f"{self.order.name}/{self.get_document_type_display()} ({self.status})"
+        if self.order:
+            base = self.order.name
+        elif self.refund:
+            base = f"Refund {self.refund.id}"
+        else:
+            base = "Unknown"
+        return f"{base}/{self.get_document_type_display()} ({self.status})"
+    
+    def clean(self):
+        if self.document_type == self.DocumentType.SALE and not self.order:
+            raise ValidationError("SALE document must have order")
+
+        if self.document_type == self.DocumentType.REFUND and not self.refund:
+            raise ValidationError("REFUND document must have refund")
+
+        if self.order and self.refund:
+            raise ValidationError("Document cannot have both order and refund")
