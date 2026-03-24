@@ -16,7 +16,7 @@ SNO_MAP = {
 class BaseOFD(ABC):
 
     @abstractmethod
-    async def create_sell_check(self, application, order):
+    async def register_document(self, application, order):
         raise NotImplementedError    
 
 

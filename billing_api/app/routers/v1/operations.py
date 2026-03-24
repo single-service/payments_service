@@ -8,7 +8,7 @@ import aiohttp
 from fastapi.responses import StreamingResponse
 from app.enums import OFD_INTERFACE_SERVICE_MAP, PAYMENT_SYSTEM_SERVICES_MAP, OrderStatusChoices
 from app.schemas.billing import (CreateFreeOrderRequest, CreateOrderRequest,
-                                 OrdersSchema, RefundRequest)
+                                 OrdersSchema, RefundRequest, RefundScheme)
 from app.services.operations_service import OperationsService
 from app.utils.auth import TokenAuth
 from app.validators.order import validate_create_order
@@ -16,6 +16,7 @@ from fastapi import (APIRouter, BackgroundTasks, Depends, HTTPException, Path,
                      Query, Request)
 from app.services.fiscal_services import AtolService
 from app.logger import get_logger
+from app.validators.refunds import validate_refund_nomenclature
 
 logger = get_logger()
 router = APIRouter()
@@ -146,11 +147,33 @@ async def refund_order(
             status_code=400,
             detail="Wrong operation"
         )
-    if operation.final_price != refund_request.amount:
+    if operation.application_id != application_id:
+        raise HTTPException(
+            status_code=404,
+            detail="Not found"
+        )
+    if operation.status == OrderStatusChoices.REFUNED:
         raise HTTPException(
             status_code=400,
-            detail="The amount must be equal to the amount of the canceled operation."
+            detail="The operation is non-refundable."
         )
+    application = await operations_service.get_application(application_id)
+    order_nomenclature = operation.nomenclature or []
+    if not order_nomenclature and application.is_fiscalisation:
+        raise HTTPException(400, "Operation has no nomenclature")
+    if application.is_fiscalisation:
+        await validate_refund_nomenclature(
+            operation,
+            refund_request,
+            operations_service
+        )
+    amount_refunds = await operations_service.get_amount_refunds(operation.id)
+    if refund_request.amount + amount_refunds > operation.final_price:
+        raise HTTPException(
+            status_code=400,
+            detail="The amount of refunds exceeds the order amount."
+        )
+        
     payment_service_cls = PAYMENT_SYSTEM_SERVICES_MAP.get(operation.payment_system)
     if not payment_service_cls:
         logger.error(f"refund: payment system not ready payment_system={operation.payment_system}")
@@ -159,29 +182,58 @@ async def refund_order(
     payment_system_parametres = await operations_service.get_payment_system_parametres(application_id)
     payment_service = payment_service_cls()
     payment_service.set_system_parameters(**payment_system_parametres)
-    amount = refund_request.amount * 100
+        
     try:
-        await payment_service.refund(operation, amount)
+        transaction_id = await payment_service.refund(operation, refund_request.amount)
         await operations_service.update_order(
             operation_id,
             status=OrderStatusChoices.IS_REFUNDING
+        )
+        await operations_service.create_refund(
+            id=str(uuid.uuid4()),
+            order_id=operation_id,
+            amount=refund_request.amount,
+            status="pending",
+            nomenclature=refund_request.nomenclature if refund_request.nomenclature else None,
+            transaction_id=transaction_id,
         )
         return {"status": "success"}
     except Exception as exc:
         logger.error(f"{exc}")
         raise HTTPException(status_code=400, detail="Error refund")
-        
+    
 
-# @router.post("/operations/{operation_id}/cancel")
-# async def cancel_order(
-#     operation_id: str,
-#     application_id=Depends(TokenAuth),
-# ):
-#     # Пока эндпоинт в разработке, можно вернуть ошибку 400 с сообщением
-#     raise HTTPException(
-#         status_code=400,
-#         detail="This endpoint is under development"
-#     )
+@router.get(
+    "/operations/refunds",
+    response_model=list[RefundScheme]
+)    
+async def get_refunds(
+    operation_id: str = None,
+    application_id=Depends(TokenAuth),
+    operations_service=Depends(OperationsService),
+):
+    """
+    Получение возвратов.
+    - Если передан operation_id, возвращаются возвраты по конкретной операции
+    - Иначе возвращаются все возвраты по всем заказам пользователя (application_id)
+    """
+    if not operation_id:
+        operations = await operations_service.get_operations(application_id)
+        order_ids = [op.id for op in operations]
+        return await operations_service.get_refunds_by_ids(order_ids)
+    operation = await operations_service.get_operation(operation_id)
+    if not operation:
+        logger.error(f"refund: operation not found {operation_id=}")
+        raise HTTPException(
+            status_code=400,
+            detail="Wrong operation"
+        )
+    if operation.application_id != application_id:
+        raise HTTPException(
+            status_code=404,
+            detail="Not found"
+        )
+    return await operations_service.get_order_refunds(operation_id)
 
 
 @router.post("/operations/")
@@ -444,6 +496,10 @@ async def payment_callback(
             status_code=400,
             detail="Wrong operation"
         )
+    if data.get("status") == OrderStatusChoices.REFUNED:
+        await operations_service.update_order_refund(operation.id, data["addtional_fields"]["transaction_id"], status="done")
+        total_refunds = await operations_service.get_amount_refunds(operation.id)
+        data["status"] = OrderStatusChoices.PARTIALLY_REFUNDED if operation.final_price > total_refunds else OrderStatusChoices.REFUNED
     logger.info(f"payment_callback: operation found operation_id={operation.id} status={operation.status}")
     application = await operations_service.get_application(operation.application_id)
     ofd_interface_parametrs = await operations_service.get_ofd_interface_parametres(operation.application_id)
@@ -459,8 +515,15 @@ async def payment_callback(
             "sell"
         )
         logger.info(f"payment_callback: fiscal check sent operation_id={operation.id}")
-    if application.is_fiscalisation and data.get("status") == OrderStatusChoices.REFUNED:
+    if application.is_fiscalisation and data.get("status") in [
+        OrderStatusChoices.PARTIALLY_REFUNDED, OrderStatusChoices.REFUNED
+    ]:
         ofd_service = OFD_INTERFACE_SERVICE_MAP.get(application.ofd_interface)
+        refund = await operations_service.get_order_refund(
+            order_id=operation.id,
+            transaction_id=data["addtional_fields"]["transaction_id"]
+        )
+        operation.nomenclature = refund.nomenclature
         background_tasks.add_task(
             ofd_service().register_document,
             application,
@@ -469,13 +532,6 @@ async def payment_callback(
             operations_service,
             "sell_refund"
         )
-        # await ofd_service().register_document(
-        #     application,
-        #     operation,
-        #     ofd_interface_parametrs,
-        #     operations_service,
-        #     "sell_refund" 
-        # )
     payment_system_parametres = await operations_service.get_payment_system_parametres(operation.application_id)
     payment_service.set_system_parameters(**payment_system_parametres)
     error = payment_service.check_payment(operation, data)

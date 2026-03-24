@@ -16,3 +16,4 @@ PaymentItemDiscount = AutoBase.classes.payments_paymentitemdiscount
 Order = AutoBase.classes.billing_order
 
 FiscalDocument = AutoBase.classes.fiscal_documents
+Refund = AutoBase.classes.refunds

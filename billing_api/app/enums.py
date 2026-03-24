@@ -15,6 +15,7 @@ class OrderStatusChoices(IntEnum):
     EXPIRED = 6
     ERROR = 7
     UNKNOWN = 8
+    PARTIALLY_REFUNDED = 9
 
     @property
     def label(self):
@@ -86,6 +87,12 @@ class VatTypeEnum(str, Enum):
     VAT107 = "vat107"
     VAT22 = "vat22"
     VAT122 = "vat122"
+    
+    
+class RefundStatus(str, Enum):
+    PENDING = "pending"
+    DONE = "done"
+    FAILED = "failed"
 
 
 class PaymentMethodEnum(str, Enum):

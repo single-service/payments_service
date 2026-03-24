@@ -145,13 +145,6 @@ class PayginePaymentSystemService(PaymentSystemInterface):
         operation_id = reference[:36] if len(reference) >= 36 else reference
 
         fee_kopecks = int(data.get("fee", 0) or 0)
-        # operation_status_maps = {
-        #     "APPROVED": OrderStatusChoices.PAID, 
-        #     "REJECTED": OrderStatusChoices.REJECTED,
-        #     "ERROR": OrderStatusChoices.ERROR, 
-        #     "TIMEOUT": OrderStatusChoices.EXPIRED, 
-        #     "": OrderStatusChoices.UNKNOWN
-        # }
         status = ""
         if data.get("order_state") == "CANCELED" and data.get("state") == "APPROVED":
             status = OrderStatusChoices.REFUNED
@@ -217,7 +210,7 @@ class PayginePaymentSystemService(PaymentSystemInterface):
                 try:
                     root = ET.fromstring(body)
                     data = {child.tag: (child.text or "").strip() for child in root}
-                    return data["state"]
+                    return data["id"]
                 except ET.ParseError as exc:
                     logger.error(f"Ошибка: {type(exc)} - {exc}")
                     raise Exception(f"Ошибка: {type(exc)} - {exc}")
