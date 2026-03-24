@@ -17,6 +17,7 @@ RUN apt-get update \
   # cleaning up unused files
   && apt-get install -y curl \
   && apt-get install -y netcat-traditional \
+  && apt-get install -y redis-server \
   && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false \
   && rm -rf /var/lib/apt/lists/*
 

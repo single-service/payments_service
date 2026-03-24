@@ -35,8 +35,8 @@ class CommonConfig:
     DB_POOL_SIZE: int = 20
 
     # Cache
-    REDIS_CONNECTION_URL = os.getenv("REDIS_URL")
-    REDIS_HOST = os.getenv("REDIS_HOST", "redis")
+    REDIS_CONNECTION_URL = os.getenv("REDIS_URL", "redis://127.0.0.1:6379")
+    REDIS_HOST = os.getenv("REDIS_HOST", "127.0.0.1")
     REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
     CACHE_PREFIX = "prediction_service"
 

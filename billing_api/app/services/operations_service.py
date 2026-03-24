@@ -17,13 +17,18 @@ class OperationsService:
     async def get_operations(self, application_id, page, limit, status, user_id):
         query = select(Order).filter_by(application_id=application_id)
         if status:
-            query = query.filter(status=status)
+            query = query.filter_by(status=status)
         if user_id:
-            query = query.filter(user_id=user_id)
+            query = query.filter_by(user_id=user_id)
         # Пагинация
         query = query.offset((page - 1) * limit).limit(limit)
         groups = await self.session.execute(query)
         return groups.scalars().all()
+    
+    async def get_all_operations(self, application_id):
+        query = select(Order).filter_by(application_id=application_id)
+        results = await self.session.execute(query)
+        return results.scalars().all()
 
     async def get_operation(self, id):
         query = select(Order).filter_by(id=id)
@@ -94,6 +99,7 @@ class OperationsService:
         self, 
         id, 
         order_id, 
+        refund_id,
         document_type, 
         data,
         created_dt,
@@ -102,6 +108,7 @@ class OperationsService:
         new_fiscal_document = dict(
             id=id,
             order_id=order_id,
+            refund_id=refund_id,
             document_type=document_type,
             request_payload=data,
             created_dt=created_dt,
@@ -245,7 +252,7 @@ class OperationsService:
     async def get_order_refund(self, **kwargs):
         query = select(Refund).filter_by(**kwargs)
         result = await self.session.execute(query)
-        return result.scalars().all()
+        return result.scalar_one_or_none()
     
     async def create_refund(self, **kwargs):
         try:
