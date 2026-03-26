@@ -152,7 +152,7 @@ class PayginePaymentSystemService(PaymentSystemInterface):
             status = OrderStatusChoices.REFUNED
         if data.get("order_state") == "COMPLETED" and data.get("state") == "APPROVED" and data.get("type") == "REVERSE":
             status = OrderStatusChoices.PARTIALLY_REFUNDED
-        elif data.get("order_state") == "COMPLETED" and data.get("state") == "APPROVED" and data.get("type") == "PURCHASE":
+        elif data.get("order_state") == "COMPLETED" and data.get("state") == "APPROVED" and data.get("type") in ("PURCHASE", "PURCHASE_BY_QR"):
             status = OrderStatusChoices.PAID
         elif data.get("order_state") == "REGISTERED" and data.get("state") == "REJECTED" and data.get("type") == "PURCHASE":
             status = OrderStatusChoices.REJECTED
