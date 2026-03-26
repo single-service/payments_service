@@ -31,7 +31,7 @@ class PayginePaymentSystemService(PaymentSystemInterface):
         sha = hashlib.sha256(raw.encode("utf-8")).hexdigest()
         return base64.b64encode(sha.encode("ascii")).decode("ascii")
 
-    def _register_order(self, amount: int, currency: int, description: str, reference: str) -> Optional[str]:
+    def _register_order(self, amount: int, currency: int, description: str, reference: str, operation_id: str = "") -> Optional[str]:
         """
         POST /webapi/Register — регистрирует заказ, возвращает ID заказа.
         amount передаётся в копейках.
@@ -47,9 +47,9 @@ class PayginePaymentSystemService(PaymentSystemInterface):
             "signature": sig,
         }
         if self.SUCCESS_URL:
-            payload["url"] = self.SUCCESS_URL
+            payload["url"] = f"{self.SUCCESS_URL}?id={operation_id}" if operation_id else self.SUCCESS_URL
         if self.FAIL_URL:
-            payload["failurl"] = self.FAIL_URL
+            payload["failurl"] = f"{self.FAIL_URL}?id={operation_id}" if operation_id else self.FAIL_URL
         logger.info(f"_register_order: payload {payload}")
         resp = requests.post(
             f"{self.PAYGINE_BASE_URL}/webapi/Register",
@@ -92,6 +92,7 @@ class PayginePaymentSystemService(PaymentSystemInterface):
             currency=currency,
             description=description,
             reference=reference,
+            operation_id=operation_id or payment_id,
         )
         if not order_id:
             return None, None
