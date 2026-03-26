@@ -53,9 +53,11 @@ class PayginePaymentSystemService(PaymentSystemInterface):
             root = ET.fromstring(resp.text)
             data = {child.tag: (child.text or "").strip() for child in root}
         except ET.ParseError:
+            logger.error(f"_register_order: failed to parse XML response status={resp.status_code} body={resp.text[:500]}")
             return None
 
         if "code" in data:
+            logger.error(f"_register_order: Paygine error code={data.get('code')} message={data.get('message')} data={data}")
             return None
 
         return data.get("id")
@@ -85,7 +87,7 @@ class PayginePaymentSystemService(PaymentSystemInterface):
             reference=reference,
         )
         if not order_id:
-            return ""
+            return None, None
 
         sig = self._make_signature(
             self.PAYGINE_SECTOR, order_id, self.PAYGINE_SIGN_PASSWORD)

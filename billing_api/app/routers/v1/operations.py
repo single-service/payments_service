@@ -8,7 +8,7 @@ import aiohttp
 from fastapi.responses import StreamingResponse
 from app.enums import OFD_INTERFACE_SERVICE_MAP, PAYMENT_SYSTEM_SERVICES_MAP, OrderStatusChoices
 from app.schemas.billing import (CreateFreeOrderRequest, CreateOrderRequest,
-                                 OrdersSchema, RefundRequest, RefundResonseSchema, RefundScheme)
+                                 OrdersSchema, RefundRequest, RefundResonseSchema)
 from app.services.operations_service import OperationsService
 from app.utils.auth import TokenAuth
 from app.validators.order import validate_create_order
@@ -458,6 +458,9 @@ async def create_free_order(
         payment_id=operation_id,
         operation_id=operation_id,
     )
+    if not link:
+        logger.error(f"create_free_order: failed to create payment link operation_id={operation_id}")
+        raise HTTPException(status_code=400, detail="Payment system unavailable, failed to create payment link")
     logger.info(f"create_free_order: payment link created operation_id={operation_id} body={create_body}")
 
     payload = dict(
