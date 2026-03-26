@@ -18,6 +18,8 @@ class PayginePaymentSystemService(PaymentSystemInterface):
         self.PAYGINE_SECTOR = None
         self.PAYGINE_SIGN_PASSWORD = None
         self.PAYGINE_BASE_URL = "https://pay.paygine.com"
+        self.SUCCESS_URL = None
+        self.FAIL_URL = None
 
     def _make_signature(self, *values) -> str:
         """
@@ -44,6 +46,11 @@ class PayginePaymentSystemService(PaymentSystemInterface):
             "reference": reference,
             "signature": sig,
         }
+        if self.SUCCESS_URL:
+            payload["url"] = self.SUCCESS_URL
+        if self.FAIL_URL:
+            payload["failurl"] = self.FAIL_URL
+        logger.info(f"_register_order: payload {payload}")
         resp = requests.post(
             f"{self.PAYGINE_BASE_URL}/webapi/Register",
             data=payload,
