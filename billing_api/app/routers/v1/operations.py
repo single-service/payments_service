@@ -488,7 +488,9 @@ async def create_free_order(
         payment_link=link,
         is_subscription_first_order=None,
         nomenclature=[item.model_dump() for item in create_body.nomenclature],
+        additional_data=create_body.additional_data,
     )
+
     create_status = await operations_service.create_order(**payload)
     if not create_status:
         logger.error(f"create_free_order: failed to save operation_id={operation_id} application_id={application_id}")
@@ -565,7 +567,8 @@ async def payment_callback(
             operations_service,
             operation.nomenclature,
             "sell",
-            order_id=operation.id
+            order_id=operation.id,
+            additional_data=operation.additional_data,
         )
         logger.info(f"payment_callback: fiscal check sent operation_id={operation.id}")
     if application.is_fiscalisation and data.get("status") in [

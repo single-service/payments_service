@@ -2,8 +2,8 @@ from datetime import datetime
 from decimal import Decimal
 from typing import List, Optional
 
-from app.enums import (MeasureEnum, PaymentMethodEnum, PaymentTypeEnum, RefundStatus,
-                       VatTypeEnum)
+from app.enums import (MeasureEnum, PaymentMethodEnum, PaymentTypeEnum,
+                       RefundStatus, VatTypeEnum)
 from pydantic import BaseModel, Field, condecimal
 
 
@@ -167,6 +167,15 @@ class CreateFreeOrderRequest(BaseModel):
         [],
         description="[Необязательное, но обязательно при фискализации] Список товарных позиций для фискального чека"
     )
+    additional_data: Optional[dict] = Field(
+        None,
+        description=(
+            "[Необязательное] Дополнительный реквизит пользователя для фискального чека (АТОЛ). "
+            "Передаётся при фискализации. Ожидается словарь с полями: "
+            "`name` (строка, макс. 64 символа) — наименование реквизита, "
+            "`value` (строка, макс. 256 символов) — значение реквизита."
+        )
+    )
 
     model_config = {
         "json_schema_extra": {
@@ -188,12 +197,16 @@ class CreateFreeOrderRequest(BaseModel):
                         "measure": 22,
                         "payment_type": "service",
                     }
-                ]
+                ],
+                "additional_data": {
+                    "name": "Номер заказа",
+                    "value": "ORD-12345"
+                }
             }
         }
     }
-    
-    
+
+
 class RefundRequest(BaseModel):
     amount: int = Field(
         ..., ge=1,
@@ -237,8 +250,8 @@ class RefundScheme(BaseModel):
     )
     status: RefundStatus
     created_dt: datetime
-    
-    
+
+
 class RefundResonseSchema(BaseModel):
     count: int
     page: int

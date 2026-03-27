@@ -13,28 +13,30 @@ SNO_MAP = {
     5: "patent"
 }
 
+
 class BaseOFD(ABC):
 
     @abstractmethod
     async def register_document(self, application, order):
-        raise NotImplementedError    
+        raise NotImplementedError
 
 
 class AtolService(BaseOFD):
-    
+
     async def register_document(
-        self, 
-        application, 
-        order, 
-        params, 
-        operations_service, 
-        nomenclature: list, 
+        self,
+        application,
+        order,
+        params,
+        operations_service,
+        nomenclature: list,
         operation_type: str,
         order_id: str = None,
-        refund_id: str = None
+        refund_id: str = None,
+        additional_data: dict = None,
     ):
         from app.enums import DocumentType
-        
+
         SITE_HOST = os.getenv("SITE_HOST")
         external_id = uuid.uuid4()
         data = {
@@ -47,7 +49,7 @@ class AtolService(BaseOFD):
                     "inn": application.inn,
                     "sno": SNO_MAP.get(application.sno),
                     "email": application.email,
-                    "payment_address": application.payment_address 
+                    "payment_address": application.payment_address
                 },
                 "payments": [
                     {
@@ -73,8 +75,8 @@ class AtolService(BaseOFD):
                 "quantity": count,
                 "price": price_rubles,
                 "sum": amount_rubles,
-                "vat":{ 
-                    "type": entity.get("nds") 
+                "vat": {
+                    "type": entity.get("nds")
                 }
             }
             if "payment_method" in entity and entity["payment_method"] is not None:
@@ -88,6 +90,14 @@ class AtolService(BaseOFD):
             data["receipt"]["items"].append(position)
         data["receipt"]["total"] = total
         data["receipt"]["payments"][0]["sum"] = total
+        if additional_data and isinstance(additional_data, dict):
+            name = additional_data.get("name", "")
+            value = additional_data.get("value", "")
+            if name and value:
+                data["receipt"]["additional_user_props"] = {
+                    "name": str(name)[:64],
+                    "value": str(value)[:256],
+                }
         if operation_type == "sell":
             document_id = await operations_service.create_fiscal_document(
                 str(external_id),
@@ -122,7 +132,7 @@ class AtolService(BaseOFD):
             error=error,
             updated_dt=datetime.now(),
         )
-        
+
     async def check_callback_data(self, data: dict, operations_service):
         external_id = data["external_id"]
         status = data["status"]
@@ -138,4 +148,4 @@ class AtolService(BaseOFD):
             ofd_document_url=ofd_receipt_url,
             error=error,
             updated_dt=datetime.now(),
-        )    
+        )

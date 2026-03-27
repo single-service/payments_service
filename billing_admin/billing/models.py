@@ -40,6 +40,7 @@ class Order(AbstractBaseModel):
     invoice_id = models.TextField(_("Invoice Id"), default=None, null=True, blank=True)
     crc = models.TextField(_("CRC"), default=None, null=True, blank=True)
     nomenclature = models.JSONField(_("Nomenclature"), blank=True, default=None, null=True)
+    additional_data = models.JSONField(_("Additional Data"), blank=True, default=None, null=True)
 
     class Meta:
         verbose_name = _("Order")
