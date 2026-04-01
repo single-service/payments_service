@@ -95,18 +95,16 @@ async def get_live(
 )
 async def order_status(
     operation_id: str,
-    operations_service=Depends(OperationsService),
 ) -> StreamingResponse:
 
-    async def operation_status_generator(
-        operation_id: str,
-        operations_service: OperationsService,
-        interval: int = 5
-    ):
+    async def operation_status_generator(operation_id: str, interval: int = 5):
+        from app.database_connector import async_session_maker
         last_status = None
         while True:
             try:
-                operation = await operations_service.get_operation(operation_id)
+                async with async_session_maker() as session:
+                    service = OperationsService(session=session)
+                    operation = await service.get_operation(operation_id)
             except Exception as e:
                 yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
                 break
@@ -116,7 +114,6 @@ async def order_status(
                 break
 
             current_status = operation.status
-            print(last_status, current_status)
             if current_status != last_status:
                 last_status = current_status
                 yield f"data: {json.dumps({'data': current_status})}\n\n"
@@ -125,13 +122,8 @@ async def order_status(
 
             await asyncio.sleep(interval)
 
-    generator = operation_status_generator(
-        operation_id=operation_id,
-        operations_service=operations_service,
-        interval=5
-    )
     return StreamingResponse(
-        generator,
+        operation_status_generator(operation_id=operation_id, interval=5),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
