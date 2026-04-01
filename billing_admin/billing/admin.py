@@ -21,17 +21,21 @@ SNO_MAP = {
     5: "patent"
 }
 
-ATOL_BASE_URL = "https://online.atol.ru/possystem/v5"
+ATOL_BASE_URL = os.getenv("ATOL_BASE_URL", "https://testonline.atol.ru/possystem/v4")
 
 
 def _get_atol_token(login, password):
     resp = requests.post(
         f"{ATOL_BASE_URL}/getToken",
         json={"login": login, "pass": password},
+        headers={"Content-Type": "application/json; charset=utf-8"},
         timeout=30,
     )
     data = resp.json()
-    return data.get("token")
+    token = data.get("token")
+    if not token:
+        raise ValueError(f"АТОЛ getToken error: {data}")
+    return token
 
 
 def _send_fiscal_check(order):
@@ -47,9 +51,10 @@ def _send_fiscal_check(order):
     if not all([login, password, group_id]):
         return False, "Не заполнены параметры АТОЛ (ATOL_LOGIN, ATOL_PASSWORD, ATOL_ID_GROUP_KKT)"
 
-    token = _get_atol_token(login, password)
-    if not token:
-        return False, "Не удалось получить токен АТОЛ"
+    try:
+        token = _get_atol_token(login, password)
+    except Exception as e:
+        return False, f"Не удалось получить токен АТОЛ: {e}"
 
     nomenclature = order.nomenclature or []
     total = 0
