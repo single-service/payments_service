@@ -43,6 +43,12 @@ if SITE_HOST:
     DEFAULT_ALLOWED_HOSTS.append(SITE_HOST)
     CSRF_TRUSTED_ORIGINS.append(f"http://{SITE_HOST}")
     CSRF_TRUSTED_ORIGINS.append(f"https://{SITE_HOST}")
+
+_extra_hosts = os.environ.get("DJANGO_ALLOWED_HOSTS", "")
+for _host in _extra_hosts.split():
+    if _host and _host not in DEFAULT_ALLOWED_HOSTS:
+        DEFAULT_ALLOWED_HOSTS.append(_host)
+
 ALLOWED_HOSTS: list = DEFAULT_ALLOWED_HOSTS
 
 
