@@ -568,21 +568,28 @@ async def payment_callback(
         OrderStatusChoices.PARTIALLY_REFUNDED, OrderStatusChoices.REFUNED
     ]:
         ofd_service = OFD_INTERFACE_SERVICE_MAP.get(application.ofd_interface)
+        transaction_id = data.get("addtional_fields", {}).get("transaction_id")
         refund = await operations_service.get_order_refund(
             order_id=operation.id,
-            transaction_id=data["addtional_fields"]["transaction_id"]
+            transaction_id=transaction_id
         )
-        background_tasks.add_task(
-            ofd_service().register_document,
-            application,
-            operation,
-            ofd_interface_parametrs,
-            operations_service,
-            refund.nomenclature,
-            "sell_refund",
-            refund_id=refund.id,
-            additional_data=refund.additional_data,
-        )
+        if refund is None:
+            logger.warning(
+                f"payment_callback: refund not found for sell_refund fiscal check "
+                f"operation_id={operation.id} transaction_id={transaction_id}"
+            )
+        else:
+            background_tasks.add_task(
+                ofd_service().register_document,
+                application,
+                operation,
+                ofd_interface_parametrs,
+                operations_service,
+                refund.nomenclature,
+                "sell_refund",
+                refund_id=refund.id,
+                additional_data=refund.additional_data,
+            )
     payment_system_parametres = await operations_service.get_payment_system_parametres(operation.application_id)
     payment_service.set_system_parameters(**payment_system_parametres)
     error = payment_service.check_payment(operation, data)
