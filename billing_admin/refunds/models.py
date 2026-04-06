@@ -33,12 +33,18 @@ class Refund(AbstractBaseModel):
         default=Status.PENDING
     )
     nomenclature = models.JSONField(
-        _("Nomenclature"), 
-        blank=True, 
-        default=None, 
+        _("Nomenclature"),
+        blank=True,
+        default=None,
         null=True
     )
-    
+    additional_data = models.JSONField(
+        _("Additional data"),
+        blank=True,
+        default=None,
+        null=True
+    )
+
     class Meta:
         db_table = "refunds"
         verbose_name = "возврат"

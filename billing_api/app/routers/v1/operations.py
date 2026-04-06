@@ -172,7 +172,7 @@ async def refund_order(
             status_code=400,
             detail="The amount of refunds exceeds the order amount."
         )
-        
+
     payment_service_cls = PAYMENT_SYSTEM_SERVICES_MAP.get(operation.payment_system)
     if not payment_service_cls:
         logger.error(f"refund: payment system not ready payment_system={operation.payment_system}")
@@ -181,7 +181,7 @@ async def refund_order(
     payment_system_parametres = await operations_service.get_payment_system_parametres(application_id)
     payment_service = payment_service_cls()
     payment_service.set_system_parameters(**payment_system_parametres)
-        
+
     try:
         transaction_id = await payment_service.refund(operation, refund_request.amount)
         await operations_service.update_order(
@@ -194,6 +194,7 @@ async def refund_order(
             amount=refund_request.amount,
             status="pending",
             nomenclature=[item.model_dump() for item in refund_request.nomenclature],
+            additional_data=refund_request.additional_data,
             transaction_id=transaction_id,
             updated_dt=datetime.now(),
             created_dt=datetime.now(),
@@ -202,7 +203,7 @@ async def refund_order(
     except Exception as exc:
         logger.error(f"{exc}")
         raise HTTPException(status_code=400, detail="Error refund")
-    
+
 
 @router.get(
     "/operations/refunds",
@@ -220,7 +221,7 @@ async def refund_order(
 | done      | Успешно             |
 
     """
-)    
+)
 async def get_refunds(
     operation_id: str = None,
     limit: int = Query(50, description="Limit"),
@@ -257,8 +258,8 @@ async def get_refunds(
             detail="Not found"
         )
     refunds = await operations_service.get_order_refunds(
-        operation_id, 
-        limit=limit, 
+        operation_id,
+        limit=limit,
         page=page
     )
     cnt = await operations_service.get_order_refunds_count(
@@ -579,7 +580,8 @@ async def payment_callback(
             operations_service,
             refund.nomenclature,
             "sell_refund",
-            refund_id=refund.id
+            refund_id=refund.id,
+            additional_data=refund.additional_data,
         )
     payment_system_parametres = await operations_service.get_payment_system_parametres(operation.application_id)
     payment_service.set_system_parameters(**payment_system_parametres)

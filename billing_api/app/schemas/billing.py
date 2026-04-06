@@ -216,6 +216,15 @@ class RefundRequest(BaseModel):
         [],
         description="[Необязательное, но обязательно при фискализации] Список товарных позиций для возврата"
     )
+    additional_data: Optional[dict] = Field(
+        None,
+        description=(
+            "[Необязательное] Дополнительный реквизит пользователя для фискального чека (АТОЛ). "
+            "Передаётся при фискализации возврата. Ожидается словарь с полями: "
+            "`name` (строка, макс. 64 символа) — наименование реквизита, "
+            "`value` (строка, макс. 256 символов) — значение реквизита."
+        )
+    )
 
     model_config = {
         "json_schema_extra": {
@@ -232,7 +241,11 @@ class RefundRequest(BaseModel):
                         "measure": 22,
                         "payment_type": "service",
                     }
-                ]
+                ],
+                "additional_data": {
+                    "name": "Артикулы",
+                    "value": "ORD-12345, ORD-12346"
+                }
             }
         }
     }
