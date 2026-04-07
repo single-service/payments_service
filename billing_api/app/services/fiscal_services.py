@@ -1,9 +1,12 @@
-from abc import ABC, abstractmethod
-from datetime import datetime
 import os
 import uuid
+from abc import ABC, abstractmethod
+from datetime import datetime
 
 from app.integrations.atol import Atol
+from app.logger import get_logger
+
+logger = get_logger()
 
 SNO_MAP = {
     1: "osn",
@@ -37,6 +40,8 @@ class AtolService(BaseOFD):
     ):
         from app.enums import DocumentType
 
+        logger.info(
+            f"[fiscal] register_document called operation_type={operation_type} additional_data={additional_data!r}")
         SITE_HOST = os.getenv("SITE_HOST")
         external_id = uuid.uuid4()
         data = {

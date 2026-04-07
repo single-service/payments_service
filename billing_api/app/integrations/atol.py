@@ -2,6 +2,9 @@ import aiohttp
 
 from app import redis_manager
 from app.settings.common import CommonConfig
+from app.logger import get_logger
+
+logger = get_logger()
 
 
 class Atol:
@@ -40,16 +43,17 @@ class Atol:
                 await redis_manager.set(redis_key, token, expire=86400)
                 return token
             error = body.get("error")
-            print(f"Ошибка при авторизации пользователя в АТОЛ: {error}")
+            logger.error(f"atol Ошибка при авторизации пользователя в АТОЛ: {error}")
             raise Exception(f"Ошибка при авторизации пользователя в АТОЛ: {error}")
         except aiohttp.ClientError as exc:
-            print(f"Ошибка соединения с АТОЛ: {exc}")
+            logger.error(f"atol Ошибка соединения с АТОЛ: {exc}")
             raise Exception(
                 f"Ошибка соединения с АТОЛ: {exc}"
             ) from exc
-            
+
     async def register_document(self, data: dict, operation_type: str):
         token = await self.auth()
+        logger.info(f"atol data: {data}")
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.post(
@@ -61,14 +65,14 @@ class Atol:
                     json=data,
                     timeout=aiohttp.ClientTimeout(total=10)
                 ) as response:
-                    print(response.status, response.content)
+                    logger.info(f"atol status {response.status}, response: {response.content}")
                     body = await response.json()
             uuid = body.get("uuid")
             status = body.get("status")
             error = body.get("error")
             return uuid, status, error
         except aiohttp.ClientError as exc:
-            print(f"Ошибка соединения с АТОЛ: {exc}")
+            logger.error(f"atol Ошибка соединения с АТОЛ: {exc}")
             raise Exception(
-                f"Ошибка соединения с АТОЛ: {exc}"
+                f"atol Ошибка соединения с АТОЛ: {exc}"
             ) from exc
