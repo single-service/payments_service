@@ -127,6 +127,11 @@ class OperationsService:
             print(f"Create fiscal document Exception: {e}")
             return None
         
+    async def get_fiscal_document(self, **kwargs):
+        query = select(FiscalDocument).filter_by(**kwargs)
+        result = await self.session.execute(query)
+        return result.scalar_one_or_none()
+
     async def update_fiscal_document(self, id: str, **kwargs):
         """
         Обновляет фискальный документ в базе данных.

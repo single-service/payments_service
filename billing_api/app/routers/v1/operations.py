@@ -549,21 +549,31 @@ async def payment_callback(
     application = await operations_service.get_application(operation.application_id)
     ofd_interface_parametrs = await operations_service.get_ofd_interface_parametres(operation.application_id)
     if application.is_fiscalisation and data.get("status") == OrderStatusChoices.PAID:
-        logger.info(
-            f"payment_callback: sending fiscal check operation_id={operation.id} ofd_interface={application.ofd_interface}")
-        ofd_service = OFD_INTERFACE_SERVICE_MAP.get(application.ofd_interface)
-        background_tasks.add_task(
-            ofd_service().register_document,
-            application,
-            operation,
-            ofd_interface_parametrs,
-            operations_service,
-            operation.nomenclature,
-            "sell",
+        existing_sell = await operations_service.get_fiscal_document(
             order_id=operation.id,
-            additional_data=operation.additional_data,
+            document_type="sale"
         )
-        logger.info(f"payment_callback: fiscal check sent operation_id={operation.id}")
+        if existing_sell:
+            logger.warning(
+                f"payment_callback: sell fiscal document already exists, skipping "
+                f"operation_id={operation.id} fiscal_document_id={existing_sell.id}"
+            )
+        else:
+            logger.info(
+                f"payment_callback: sending fiscal check operation_id={operation.id} ofd_interface={application.ofd_interface}")
+            ofd_service = OFD_INTERFACE_SERVICE_MAP.get(application.ofd_interface)
+            background_tasks.add_task(
+                ofd_service().register_document,
+                application,
+                operation,
+                ofd_interface_parametrs,
+                operations_service,
+                operation.nomenclature,
+                "sell",
+                order_id=operation.id,
+                additional_data=operation.additional_data,
+            )
+            logger.info(f"payment_callback: fiscal check sent operation_id={operation.id}")
     if application.is_fiscalisation and data.get("status") in [
         OrderStatusChoices.PARTIALLY_REFUNDED, OrderStatusChoices.REFUNED
     ]:
@@ -579,17 +589,27 @@ async def payment_callback(
                 f"operation_id={operation.id} transaction_id={transaction_id}"
             )
         else:
-            background_tasks.add_task(
-                ofd_service().register_document,
-                application,
-                operation,
-                ofd_interface_parametrs,
-                operations_service,
-                refund.nomenclature,
-                "sell_refund",
+            existing_refund_doc = await operations_service.get_fiscal_document(
                 refund_id=refund.id,
-                additional_data=refund.additional_data,
+                document_type="refund"
             )
+            if existing_refund_doc:
+                logger.warning(
+                    f"payment_callback: refund fiscal document already exists, skipping "
+                    f"refund_id={refund.id} fiscal_document_id={existing_refund_doc.id}"
+                )
+            else:
+                background_tasks.add_task(
+                    ofd_service().register_document,
+                    application,
+                    operation,
+                    ofd_interface_parametrs,
+                    operations_service,
+                    refund.nomenclature,
+                    "sell_refund",
+                    refund_id=refund.id,
+                    additional_data=refund.additional_data,
+                )
     payment_system_parametres = await operations_service.get_payment_system_parametres(operation.application_id)
     payment_service.set_system_parameters(**payment_system_parametres)
     error = payment_service.check_payment(operation, data)
