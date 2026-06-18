@@ -69,7 +69,21 @@ class DummyPaymentSystemService(PaymentSystemInterface):
             "email": user_email or "",
             "description": description or "",
         })
-        return "https://%(host)s/api/v1/dummy-payment/?%(query)s" % {
-            "host": self.HOST,
-            "query": query,
-        }
+        host = self._normalize_host(self.HOST)
+        return f"https://{host}/api/v1/dummy-payment/?{query}"
+
+    @staticmethod
+    def _normalize_host(host) -> str:
+        """Возвращает чистый хост без схемы и слешей.
+
+        HOST в параметрах ПС может быть записан как угодно
+        ('https//payments.createrra.ru', 'https://host', 'host/'),
+        поэтому отрезаем любую схему и лишние слеши, чтобы не получить
+        'https://https//...'.
+        """
+        host = (host or "").strip()
+        for prefix in ("https://", "http://", "https//", "http//"):
+            if host.startswith(prefix):
+                host = host[len(prefix):]
+                break
+        return host.strip("/")

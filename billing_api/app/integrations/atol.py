@@ -12,10 +12,11 @@ class Atol:
     # BASE_URL = "https://online.atol.ru/possystem/v4"
     # BASE_URL = "https://testonline.atol.ru/possystem/v4"
 
-    def __init__(self, login, password, group_code):
+    def __init__(self, login, password, group_code, base_url=None):
         self.login = login
         self.password = password
         self.group_code = group_code
+        self.base_url = (base_url or CommonConfig.ATOL_BASE_URL).rstrip("/")
 
     async def auth(self):
         redis_key = f"{self.login}_atol_token"
@@ -27,7 +28,7 @@ class Atol:
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.post(
-                    f"{CommonConfig.ATOL_BASE_URL}/getToken",
+                    f"{self.base_url}/getToken",
                     headers={
                         "Content-Type": "application/json; charset=utf-8"
                     },
@@ -57,7 +58,7 @@ class Atol:
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.post(
-                    f"{CommonConfig.ATOL_BASE_URL}/{self.group_code}/{operation_type}",
+                    f"{self.base_url}/{self.group_code}/{operation_type}",
                     headers={
                         "Content-Type": "application/json; charset=utf-8",
                         "Token": token

@@ -129,6 +129,7 @@ class AtolService(BaseOFD):
             params.get("ATOL_LOGIN"),
             params.get("ATOL_PASSWORD"),
             params.get("ATOL_ID_GROUP_KKT"),
+            base_url=params.get("ATOL_BASE_URL"),
         ).register_document(data, operation_type)
         await operations_service.update_fiscal_document(
             document_id,
