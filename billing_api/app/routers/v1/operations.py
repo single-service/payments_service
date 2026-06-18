@@ -444,7 +444,7 @@ async def create_free_order(
 
     operation_id = str(uuid.uuid4())
     amount_rubles = create_body.amount / 100
-    link, order_id = payment_service.create_link(
+    link = payment_service.create_link(
         final_amount=amount_rubles,
         user_email=create_body.user_email,
         description=create_body.description,
@@ -477,7 +477,7 @@ async def create_free_order(
         idempotent_key=create_body.idempotent_key,
         amount=create_body.amount,
         discount_amount=0,
-        payment_system_order_id=order_id,
+        payment_system_order_id=None,
         payment_link=link,
         is_subscription_first_order=None,
         nomenclature=[item.model_dump() for item in create_body.nomenclature],
