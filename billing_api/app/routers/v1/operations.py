@@ -5,8 +5,8 @@ from datetime import datetime
 from typing import Annotated
 
 import aiohttp
-from fastapi.responses import StreamingResponse
-from app.enums import OFD_INTERFACE_SERVICE_MAP, PAYMENT_SYSTEM_SERVICES_MAP, OrderStatusChoices
+from fastapi.responses import StreamingResponse, HTMLResponse
+from app.enums import OFD_INTERFACE_SERVICE_MAP, PAYMENT_SYSTEM_SERVICES_MAP, OrderStatusChoices, PaymentSystemChoices
 from app.schemas.billing import (CreateFreeOrderRequest, CreateOrderRequest,
                                  OrdersSchema, RefundRequest, RefundResonseSchema)
 from app.services.operations_service import OperationsService
@@ -491,6 +491,83 @@ async def create_free_order(
     logger.info(
         f"create_free_order: success operation_id={operation_id} amount={create_body.amount} user_id={create_body.user_id}")
     return payload
+
+
+@router.get("/dummy-payment/", include_in_schema=False)
+async def dummy_payment_page(
+    operation_id: str = Query(...),
+    sum: str = Query(""),
+    email: str = Query(""),
+    description: str = Query(""),
+):
+    """Тестовая страница оплаты для Dummy платёжной системы.
+
+    Имитирует страницу банка: показывает данные заказа и кнопку «Оплатить»,
+    которая шлёт колбэк об успешной оплате (как сделал бы реальный ПС),
+    после чего срабатывает фискализация и тестовый чек уходит в ОФД.
+    """
+    from html import escape
+
+    callback_url = f"/api/v1/order/payment/{PaymentSystemChoices.DUMMY.value}/"
+    page = f"""<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Тестовая оплата</title>
+  <style>
+    body {{ font-family: -apple-system, Segoe UI, Roboto, sans-serif; background: #f4f5f7; margin: 0; }}
+    .card {{ max-width: 420px; margin: 60px auto; background: #fff; border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,.08); padding: 32px; }}
+    h1 {{ font-size: 20px; margin: 0 0 4px; }}
+    .muted {{ color: #888; font-size: 13px; margin-bottom: 24px; }}
+    .row {{ display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; font-size: 14px; }}
+    .row span:last-child {{ font-weight: 600; }}
+    .amount {{ font-size: 28px; font-weight: 700; margin: 20px 0; text-align: center; }}
+    button {{ width: 100%; padding: 14px; font-size: 16px; border: 0; border-radius: 8px;
+             background: #2d7ff9; color: #fff; cursor: pointer; }}
+    button:disabled {{ background: #9bbcf0; cursor: default; }}
+    #done {{ display: none; text-align: center; color: #1a9e57; font-weight: 600; margin-top: 16px; }}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Тестовая оплата</h1>
+    <div class="muted">Dummy payment system · песочница</div>
+    <div class="amount">{escape(str(sum))} ₽</div>
+    <div class="row"><span>Назначение</span><span>{escape(description) or "—"}</span></div>
+    <div class="row"><span>Email</span><span>{escape(email) or "—"}</span></div>
+    <div class="row"><span>Операция</span><span>{escape(operation_id)}</span></div>
+    <form id="pay-form" method="post" action="{callback_url}" style="margin-top:24px">
+      <input type="hidden" name="operation_id" value="{escape(operation_id)}">
+      <button type="submit" id="pay-btn">Оплатить</button>
+    </form>
+    <div id="done">✓ Оплачено. Чек отправлен в ОФД.</div>
+  </div>
+  <script>
+    const form = document.getElementById('pay-form');
+    form.addEventListener('submit', async (e) => {{
+      e.preventDefault();
+      const btn = document.getElementById('pay-btn');
+      btn.disabled = true; btn.textContent = 'Обработка…';
+      try {{
+        const resp = await fetch(form.action, {{
+          method: 'POST',
+          headers: {{ 'Content-Type': 'application/x-www-form-urlencoded' }},
+          body: new URLSearchParams(new FormData(form)),
+        }});
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        form.style.display = 'none';
+        document.getElementById('done').style.display = 'block';
+      }} catch (err) {{
+        btn.disabled = false; btn.textContent = 'Оплатить';
+        alert('Ошибка оплаты: ' + err.message);
+      }}
+    }});
+  </script>
+</body>
+</html>"""
+    return HTMLResponse(content=page)
 
 
 async def perform_callback(application_callback_url: str, payload: dict):
