@@ -1,6 +1,7 @@
 import json
+import uuid
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from urllib import parse
 
 from app.services.payment_systems.main_interface import PaymentSystemInterface
@@ -11,14 +12,16 @@ class DummyPaymentSystemService(PaymentSystemInterface):
     def __init__(self):
         self.HOST = None
 
-    def create_link(self, final_amount, user_email, description, payment_id, operation_id=0, is_subscription=False, nomenclature=None) -> str:
-        """Creates link for the given user's payment"""
-        return self._generate_link(
+    def create_link(self, final_amount, user_email, description, payment_id, operation_id=0, is_subscription=False, nomenclature=None) -> Tuple[str, str]:
+        """Creates link for the given user's payment. Returns (link, order_id) — как у Paygine."""
+        link = self._generate_link(
             operation_id=operation_id,
             value=final_amount,
             user_email=user_email,
             description=description,
         )
+        order_id = str(uuid.uuid4())
+        return link, order_id
 
     def check_payment(self, operation, payload) -> Optional[str]:
         """Dummy всегда подтверждает оплату (тестовая платёжная система)."""
