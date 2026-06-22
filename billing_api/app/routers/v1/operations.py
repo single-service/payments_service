@@ -22,6 +22,19 @@ logger = get_logger()
 router = APIRouter()
 
 
+def _unpack_payment_link(result):
+    """Нормализует результат create_link к (link, order_id).
+
+    Разные платёжные системы возвращают по-разному:
+    Robokassa/Dummy — строку (ссылку), Paygine — кортеж (link, order_id).
+    """
+    if isinstance(result, (tuple, list)):
+        link = result[0] if len(result) > 0 else None
+        order_id = result[1] if len(result) > 1 else None
+        return link, order_id
+    return result, None
+
+
 @router.post("/callback/")
 async def debug_callback(request: Request):
     """Тестовый эндпоинт для проверки исходящего колбэка."""
@@ -329,7 +342,7 @@ async def create_order(
             base_items=base_items,
         )
     # Получаем ссылку
-    link = payment_service.create_link(
+    link, _ = _unpack_payment_link(payment_service.create_link(
         final_amount=amount,
         user_email=create_body.user_email,
         description=payment_item.description,
@@ -337,7 +350,7 @@ async def create_order(
         operation_id=operation_id,
         is_subscription=payment_item.is_subscription,
         nomenclature=nomenclature
-    )
+    ))
     logger.info(f"create_order: payment link created operation_id={operation_id} amount={amount}")
     # Добавляем операцию
     payload = dict(
@@ -444,13 +457,13 @@ async def create_free_order(
 
     operation_id = str(uuid.uuid4())
     amount_rubles = create_body.amount / 100
-    link, order_id = payment_service.create_link(
+    link, order_id = _unpack_payment_link(payment_service.create_link(
         final_amount=amount_rubles,
         user_email=create_body.user_email,
         description=create_body.description,
         payment_id=operation_id,
         operation_id=operation_id,
-    )
+    ))
     if not link:
         logger.error(f"create_free_order: failed to create payment link operation_id={operation_id}")
         raise HTTPException(status_code=400, detail="Payment system unavailable, failed to create payment link")
